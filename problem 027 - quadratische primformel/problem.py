@@ -20,8 +20,8 @@ N, go to 5.
 
 und dafür gibts noch Optimierungen wie z.B. nur die ungeraden zu kreuzen
 '''
-
-def getprimes(N):
+#creates a true/false list if index is prime
+def getboollistofprimes(N):
     N += 1
     primes = [True]*(N)
     primes[0] = False
@@ -33,7 +33,13 @@ def getprimes(N):
             while n*i < N:
                 primes[n*i] = False
                 i += 1
+    return primes            
+
+
+
+def getprimes(N):
     
+    primes = getboollistofprimes(N)    
     integerprimes =[]            
     for n,isprime in enumerate(primes):
         if isprime:
@@ -63,7 +69,7 @@ def getprimes(N):
 #1st order optimization: get a list of primes 2..1000
 #check all combinations for n=1
 
-#if there are not many such combinations, brute force them till the fail to produces primes.
+#if there are not many such combinations, brute force them till the fail to produce primes.
 
 
 def getnumber(n,a,b):
@@ -76,8 +82,10 @@ primes = getprimes(1000)
 a1primes = getprimes(2001)
 a2primes = getprimes(3004)
 a3primes = getprimes(4009)
-alist  = [False]*2000
-offset = 1000
+a617primes = getboollistofprimes(1000000)
+maxx = 617 #entspricht den max. 1.000.000 primes, die ich nutze
+alist  = []
+#offset = 1000
 
 numberofcandidates = 0
 
@@ -91,12 +99,30 @@ for b in primes:
                 if n3 in a3primes:                            
                     #a, b are primes for n=0,1,2,3
                     #from here I should check if next iterations are prime and count this numbers
-                    alist[a+offset] = True
-                    numberofcandidates += 1
-       
+                    nx = n3
+                    x = 3 #well this is a recheck of n=3 to enter the while loop
+                    while a617primes[nx] == True and x < maxx:
+                        x += 1
+                        nx = getnumber(x,a,b)
+                        
+                    alist.append([x,a,b])
+   
+
+print len(alist)
+maxfoundx = 0
+maxtuple = []
+for a in alist:
+    if a[0] > maxfoundx:
+        maxfoundx = a[0]
+        maxtuple = a
+        
+print maxtuple, maxtuple[1]*maxtuple[2]        
+                
+
+'''       
 integeralist = []       
 for a,isvalid in enumerate(alist):
     if isvalid:
         integeralist.append(a-offset)
 print integeralist, len(integeralist), numberofcandidates     
-           
+'''           
