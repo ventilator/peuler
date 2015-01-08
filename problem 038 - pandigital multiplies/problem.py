@@ -17,6 +17,7 @@ import profile
 pandigital_set = set(['1','2','3','4','5','6','7','8','9'])
 max_found = 0
 
+# info: this function is shit. look at problem 41 for a better one
 def check_for_pandigitalism(number):
     global max_found
     result = False
