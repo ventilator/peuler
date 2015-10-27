@@ -15,6 +15,7 @@ By solving all fifty puzzles find the sum of the 3-digit numbers found in the to
 """
 
 import profile
+import time
 import copy
 
 database_filename = 'p096_sudoku.txt'
@@ -23,6 +24,8 @@ empty_sudoku = [[0]*dimension for i in range(dimension)]
 digits = set(i+1 for i in range(9))
 
 superlatice_dimension = dimension // 3
+
+verbose = False
 
 # lame creation of superlatice, since 2D init of array of sets somehow fails with deep copy
 filled_superlatice = []
@@ -50,7 +53,9 @@ def import_database(filename):
 print_item_x = 4
 print_item_y = 0
     
-def solve_sudoku(sudoku):
+def solve_sudoku(unsolved_sudoku, recursion_depth = 1):
+    
+    sudoku = copy.deepcopy(unsolved_sudoku)
     
     sudoku_superlatice = copy.deepcopy(filled_superlatice) # contains numbers to be distributed until len()=0    
     
@@ -122,17 +127,28 @@ def solve_sudoku(sudoku):
                 if len(sudoku[j][i]) != 1:
                     sudoku[j][i].intersection_update(sudoku_superlatice[superlatice_y][superlatice_x])
     
-        print_sudoku(pristine_sudoku, sudoku, False)                
+        # print_sudoku(pristine_sudoku, sudoku, False)                
 
-        print("round: " + str(times))        
+        # print("round: " + str(times))        
         if pristine_sudoku == sudoku and pristine_superlatice == sudoku_superlatice:
-            print("no more changes")
+            if verbose: print("Solution attempt took", times, "rounds")
             # check for candidates to maybe check recursivly
-            for y, lines in enumerate(sudoku):
-                for x, items in enumerate(lines):
-                    if len(items) == 2:
-                        print(y,x,items)
-            break
+            if recursion_depth > 0:
+                recursion_depth -= 1
+                for y, lines in enumerate(sudoku):
+                    for x, items in enumerate(lines):
+                        if len(items) == 2:
+                            # print(y,x,items)
+                            for possible_item in items:
+                                test_sudoku = copy.deepcopy(sudoku)
+                                test_sudoku[y][x] = set([possible_item])
+                                if verbose: print("testing a guess")
+                                test_sudoku = solve_sudoku(test_sudoku, recursion_depth)
+                                if verify_sudoku(test_sudoku):
+                                    return test_sudoku
+                        
+            # break
+            return sudoku        
 
 
 def print_sudoku(before, after, current_state = True):
@@ -187,20 +203,79 @@ def print_sudoku(before, after, current_state = True):
             print('─────┼─────┼─────┼┼─────┼─────┼─────┼─')
         
 
-
+# does not verifiy block structure
 def verify_sudoku(sudoku):
     is_valid = True
     
     complete_line = copy.deepcopy(digits)
+    row_check = [complete_line for i in range(dimension)]
+    
     for lines in sudoku:
         complete_line = copy.deepcopy(digits)
+        for i, item in enumerate(lines):
+            if len(item) == 1:
+                complete_line.discard(item)
+                row_check[i].discard(item)
+            else:
+                is_valid = False
+        if not complete_line: # if empty
+            is_valid = False
+    
+    for row in row_check:
+        if not row:
+            is_valid = False            
+     
+    return is_valid       
         
     
 def solve_problem():     
     database = import_database(database_filename)
-    solve_sudoku(database[0])
-    # print_sudoku(database[0], database[0], False)
-    verify_sudoku(database[0])
+    solved_database = copy.deepcopy(database)
+    valid_solutions = 0
+    invalid_solutions = 0    
+    
+    hard_cases = [5, 41, 43, 48] # experimental observation
+    
+    for i, sudokus in enumerate(database):
+        if i in hard_cases: # number of guesses to test out until stopping to try
+            recursion_depth = 2
+        else:
+            recursion_depth = 1
+            
+        print("Solving item",i,"...")
+        solved_database[i] = solve_sudoku(database[i], recursion_depth)
+        print_sudoku(database[i], solved_database[i], False)
+        if not verify_sudoku(solved_database[i]):
+            print('\x1b[1;33m'+'Solution is invalid'+'\x1b[0m')
+            invalid_solutions += 1                
+        else:
+            print("Solution is valid")
+            valid_solutions += 1
+            
+    print(valid_solutions, "valid solitions.", invalid_solutions, "invalid solutions.", valid_solutions+invalid_solutions, "in total." )       
+    if verbose: print("hard cases are", hard_cases)
+    
+    get_solution_for_peuler(solved_database)
          
-solve_problem()   
+
+def get_solution_for_peuler(solved_sudokus):
+    sums = []
+    for sudoku in solved_sudokus:
+        sums.append(list(sudoku[0][0])[0]*100 + list(sudoku[0][1])[0]*10 + list(sudoku[0][2])[0])
+    
+    print(sums[0], "should be 483 (verification)")
+    print(sum(sums), "should be the correct answer for peuler.")    
+
+
+
+
+start_time = time.time()
+
+solve_problem()  
+
+print("--- %s seconds ---" % (time.time() - start_time))
+
 # profile.run('solve_problem()') 
+
+# profiling does take very long. Normal run takes <30 seconds
+# better guessing algorithm might help which testrun to do. so far just testing by occurence
