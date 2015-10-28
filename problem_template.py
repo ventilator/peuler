@@ -6,7 +6,7 @@ Created on Mon Feb 17 21:02:08 2014
 """
 
 import profile
-
+import time
         
     
 
@@ -19,4 +19,13 @@ def solve_problem():
     return 0
     
     
-profile.run('solve_problem()')   
+    
+    
+    
+start_time = time.time()
+
+solve_problem()  
+
+print("--- %s seconds ---" % (time.time() - start_time))
+ 
+# profile.run('solve_problem()')   
