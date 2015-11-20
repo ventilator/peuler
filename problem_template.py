@@ -1,31 +1,19 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Feb 17 21:02:08 2014
+@author: ventilator """
 
-@author: ventilator
-"""
-
-import profile
 import time
-        
+start_time = time.time()        
     
-
-
 
 def solve_problem():
-    
-    
-    
+           
     return 0
     
     
-    
-    
-    
-start_time = time.time()
-
 solve_problem()  
+print("runtime: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - start_time))
 
-print("--- %s seconds ---" % (time.time() - start_time))
- 
-# profile.run('solve_problem()')   
+#import profile 
+#profile.run('solve_problem()')   
