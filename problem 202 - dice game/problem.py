@@ -25,37 +25,39 @@ start_time = time.time()
 from collections import namedtuple
 import matplotlib.pyplot as plt
 
-dice = namedtuple("dice", "count sides outcomes")    
-pyramidal = dice(9, [1,2,3,4], [])
-cubical = dice(6, [1,2,3,4,5,6], [])
+dice = namedtuple("dice", "count sides outcomes label")    
+pyramidal = dice(9, [1,2,3,4], [], "pyramidal")
+cubical = dice(6, [1,2,3,4,5,6], [], "cubic")
 # reduced size
-pyramidal = dice(3, [1,2,3,4], [])
-cubical = dice(2, [1,2,3,4,5,6], [])
+pyramidal = dice(3, [1,2,3,4], [], "pyramidal")
+cubical = dice(2, [1,2,3,4,5,6], [], "cubic")
+# simple example with one cubic dice on each side
+#cubical = dice(1, [1,2,3,4,5,6], [], "cubic")
+#pyramidal = dice(1, [1,2,3,4,5,6], [], "cubic")
 
 import itertools
 
 def plotit(data, data2):
+    # plot a smoothed line arount the points
+    def smooth(plt,x,y,color):
+        from scipy.interpolate import spline
+        import numpy as np
+        
+        xnp = np.array(x)
+        xnew = np.linspace(xnp.min(),xnp.max(),300)        
+        y_smooth = spline(x,y,xnew)        
+        plt.plot(xnew,y_smooth, c=color, alpha=0.2)        
+        
     with plt.xkcd():
-    # Based on "Stove Ownership" from XKCD by Randall Monroe
-    # http://xkcd.com/418/
 
         fig = plt.figure()
-#        ax = fig.add_axes((0.1, 0.2, 0.8, 0.7))
-#        ax.spines['right'].set_color('none')
-#        ax.spines['top'].set_color('none')
-#        plt.xticks([])
-#        plt.yticks([])
-#        ax.set_ylim([-30, 10])
-#    
-#        data = np.ones(100)
-#        data[70:] -= np.arange(30)
-    
-#        plt.annotate(
-#            'THE DAY I REALIZED\nI COULD COOK BACON\nWHENEVER I WANTED',
-#            xy=(70, 1), arrowprops=dict(arrowstyle='->'), xytext=(15, -10))
     
         x,y = map(list, zip(*data))    
         x2,y2 = map(list, zip(*data2))    
+        
+        # plot a smoothed line arount the points
+        smooth(plt,x,y,"b")
+        smooth(plt,x2,y2,"r")       
         
         plt.scatter(x, y, marker = "s", c="b", label = "cubical dices")
         plt.scatter(x2, y2, marker = "v", c="r", label = "pyramidal dices")    
@@ -63,32 +65,6 @@ def plotit(data, data2):
         plt.legend(loc="upper left")
         plt.xlabel('Augensumme')
         plt.ylabel('probability')
-#        fig.text(
-#            0.5, 0.05,
-#            '"Stove Ownership" from xkcd by Randall Monroe',
-#            ha='center')
-    
-        # Based on "The Data So Far" from XKCD by Randall Monroe
-        # http://xkcd.com/373/
-    
-#        fig = plt.figure()
-#        ax = fig.add_axes((0.1, 0.2, 0.8, 0.7))
-#        ax.bar([-0.125, 1.0-0.125], [0, 100], 0.25)
-#        ax.spines['right'].set_color('none')
-#        ax.spines['top'].set_color('none')
-#        ax.xaxis.set_ticks_position('bottom')
-#        ax.set_xticks([0, 1])
-#        ax.set_xlim([-0.5, 1.5])
-#        ax.set_ylim([0, 110])
-#        ax.set_xticklabels(['CONFIRMED BY\nEXPERIMENT', 'REFUTED BY\nEXPERIMENT'])
-#        plt.yticks([])
-#    
-#        plt.title("CLAIMS OF SUPERNATURAL POWERS")
-#    
-#        fig.text(
-#            0.5, 0.05,
-#            '"The Data So Far" from xkcd by Randall Monroe',
-#            ha='center')
     
     plt.show()
 
@@ -111,18 +87,46 @@ def calc_probability(dice):
         dice.outcomes.append([i, probability(i, dice.count, max(dice.sides))])
         
 
+# order of arguments can be swapped to calc loose rate        
+def calc_winning_rate(cubical, pyramidal):
+    cube_win = 0
+    for cubical_throw in cubical.outcomes:
+        pyramdial_cummulated_probabilty_if_won = 0
+        for pyramidal_throw in pyramidal.outcomes:
+            if pyramidal_throw[0] < cubical_throw[0]:
+                pyramdial_cummulated_probabilty_if_won += pyramidal_throw[1]
+        cube_win += cubical_throw[1] * pyramdial_cummulated_probabilty_if_won
+
+    print(cubical.label,"wins with probability of", cube_win)                
+    return cube_win
+    
+
+def calc_draw_rate(cubical, pyramidal):   
+    draw = 0
+    # compare each with each (twice) because of different probabilites (?)
+    for cubical_throw in cubical.outcomes:        
+        for pyramidal_throw in pyramidal.outcomes:
+            if pyramidal_throw[0] == cubical_throw[0]:
+                draw += cubical_throw[1] *  pyramidal_throw[1]
+
+
+    print("draw with probability of", draw)  
+    return draw                
+        
+
 def solve_problem():
     calc_probability(cubical)
     calc_probability(pyramidal)    
     
+    plotit(cubical.outcomes, pyramidal.outcomes)   
+    # order of arguments can be swapped to calc loose rate
+    win = calc_winning_rate(cubical, pyramidal)    
+    loose = calc_winning_rate(pyramidal, cubical)
+    draw = calc_draw_rate(pyramidal, cubical)
     
-     
-    # plotit(pyramidal.outcomes)
-    # plotit(cubical.outcomes)
-    plotit(cubical.outcomes, pyramidal.outcomes)    
-    # pyramidal.outcomes.append(list(map(sum, pyramidal.outcomes)))
-    # print(pyramidal.outcomes)
-        
+    print("sum of probabilites should at to 1: ", win + loose + draw)
+    if (1 - (win + loose + draw)) > 0.0000001: print("sum does not reach around 1")
+      
     return 0
     
     
@@ -131,3 +135,9 @@ print("runtime: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - start_time))
 
 #import profile 
 #profile.run('solve_problem()')   
+
+"""
+cubic wins with probability of 0.35608975337856585
+pyramidal wins with probability of 0.57314407678298
+draw with probability of 0.070766169838454
+"""
