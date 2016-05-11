@@ -97,9 +97,10 @@ def iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field
             U[y, x] = u 
             V[y, x] = v                
             field[y, x] -= 1 # ant walks away
+            tracing_step = step+1
             step_was_here = traceing_field[y, x]
             if step_was_here == 0: # if never someone came here, subtract steps
-                traceing_field[y, x] -= step
+                traceing_field[y, x] -= tracing_step
 
                 step_was_here = traceing_field[y, x]
             if (0 <= (y-v) < dim_y) and (0 <= (x+u) < dim_x):
@@ -107,18 +108,18 @@ def iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field
                 
                 some_left_at_step = traceing_field[y-v, x+u]
                 if some_left_at_step == 0: # if never someone left
-                    traceing_field[y-v, x+u] = step # if never someone was here, record steps
+                    traceing_field[y-v, x+u] = tracing_step # if never someone was here, record steps
                 else:
                     if (traceing_field[y-v, x+u] + step_was_here) == 0: # swap was here
                         # break tripple loop
-                        return
+                        return False
                         
                     
             else:
-                return
+                return False
             step += 1
 
-    return 
+    return True
 
 
 def iterate(X, Y, U, V, ants):
@@ -129,19 +130,15 @@ def iterate(X, Y, U, V, ants):
 
         field = ants.copy()
         traceing_field = ants.copy() # ants record steps and take them with them
-        iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field)
+        if iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field):
                
-        if legal_sequence(U, V, field):
-            plot(X, Y, U, V)
-            testbreaker += 1
-            print("U")
-            print(U)
-            print("V")
-            print(V)     
-            print("field")
-            print(field)                  
+            if legal_sequence(U, V, field):
+                plot(X, Y, U, V)
+                testbreaker += 1                
             
-        if testbreaker > 1: break        
+        if testbreaker > 10: break  
+
+    print("found solutions: ", testbreaker)      
         
 
 dim_x = 4
