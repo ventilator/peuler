@@ -18,6 +18,9 @@ import itertools
 from matplotlib.pyplot import cm
 import matplotlib.pyplot as plt
 
+import time
+start_time = time.time()  
+block_time = start_time  
 
 def plot(X, Y, U, V):    
     plot1 = plt.figure()
@@ -36,13 +39,22 @@ def plot(X, Y, U, V):
     #plt.grid(plot1)
     plt.show(plot1)                 # display the plot
     
+    
+def plot_array(array):
+    x = array
+    y = [1 for _ in range(len(array))]
+    array_plot = plt.figure()
+    plt.plot(x, y, 'ro')
+    plt.show(array_plot)
+        
 
 def init_meshgrids():
     # generate two mesh grids. They contain all datapoints 
-    Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]
+#    Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]
     U = np.zeros([dim_y, dim_x])
-    V = np.zeros([dim_y, dim_x])
-    return X, Y, U, V
+    V = np.zeros([dim_y, dim_x])    
+#    return X, Y, U, V
+    return U, V
     
 
 def legal_sequence(U, V, field):
@@ -55,11 +67,16 @@ def legal_sequence(U, V, field):
             
     def rows_are_conserved(A):
         for row in A:
-            if (sum(row)) != 0:
+            if (sum(row)) != dim_x:
                 return False
         return True        
         
-            
+    def cols_are_conserved(A):
+        B = np.transpose(A)
+        for row in B:
+            if (sum(row)) != dim_y:
+                return False
+        return True               
     # 1) must not move out of boundary
     
     # 2) must not move to place which is already populated
@@ -70,55 +87,54 @@ def legal_sequence(U, V, field):
     # if total sum of U or V are not 0, netto movement has occured
     # still out of boundary problem: e.g. if all move to the outside 
     # then momentum is convserved and still sum == 0
-    if momentum_converved(U) and momentum_converved(V):
-        return_flag = True
-    else:
-        return_flag = False # could directly return False
+    
+    # turns out, conversation of momentum is already covered by conservation of rows/cols in the field
+#    if momentum_converved(U) and momentum_converved(V):
+#        return_flag = True
+#    else:
+#        return False
+        
         
     # check if ants sit on top of each other    
-    if rows_are_conserved(field) and (rows_are_conserved(np.transpose(field))):
+    if rows_are_conserved(field) and cols_are_conserved(field):
         return_flag = True
     else:
-        return_flag = False        
+        return False
     
 
-    # check for step 3) is a bit tricky. Essentially we could check, if two
-    # vectors from neightbours cancel each other. Or each ant could take
-    # something (unique) along which may not be brought back to its origin, 
-    # e.g. an increasing number. and if in the end there is a field position,
-    # which is 0, then there was a swapping of places
-    
+    # check for step 3) is done during generation of movement vectors.
+    # if target + source == 0, then swapping occured and thus sequence is discarded
+
     return return_flag
 
 
-def iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field):
+def iterate_over_each(X, Y, U, V, movement_sequence, field):
     step = 0
 
     # iterate over each koordinate and apply a particular movement sequence
     for y in range(len(X)):
         for x in range(len(X[y])):
-            # print(X[y, x], Y[y, x])
             u = movement_sequence[step][0] # movement in x direction
             v = movement_sequence[step][1] # movement in y direction
             U[y, x] = u 
             V[y, x] = v                
-            field[y, x] -= 1 # ant walks away
-
-            # field: prevents two ants on the same field            
-            
-            # check if target movement vector + source vector cancel each other
-            # this would mean, swapping was here
-            if (0 <= (y-v) < dim_y) and (0 <= (x+u) < dim_x):
-                if ((U[y, x] + U[y-v, x+u]) == 0) and ((V[y, x] + V[y-v, x+u]) == 0):
-                    #swapping
+            # field: prevents two ants on the same field, evaluated later    
+            # field[y, x] -= 1 # ant walks away # its to just track inflow instead of conversation of ants                   
+#            if field[y, x] < -1:
+#                return False
+            x_u = x+u # calculate this only once, it is indeed faster by 0.5s per 25k rounds
+            y_v = y-v
+            if (0 <= (y_v) < dim_y) and (0 <= (x_u) < dim_x):
+                field[y_v, x_u] += 1 # ant comes here  
+#                if field[y-v, x+u] > 2: # more ants are already here than will walk away
+#                    return False                                                      
+                # check if target movement vector + source vector cancel each other
+                # this would mean that swapping was here                
+                if ((U[y, x] + U[y_v, x_u]) == 0) and ((V[y, x] + V[y_v, x_u]) == 0):
+                    # swapping
                     return False
-            
-
-            if (0 <= (y-v) < dim_y) and (0 <= (x+u) < dim_x):
-                field[y-v, x+u] += 1 # ant comes here
-
-                        
             else:
+                # walking out of grid
                 return False
             step += 1
 
@@ -126,33 +142,36 @@ def iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field
 
 
 def iterate(ants):
+    # due to massive performance drop, X, Y is only generated once. No cleanup necessary        
+    Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]    
     # generate all possible sequences of movement
-    movement_sequences = itertools.product(directions, repeat=max_steps)    
-    testbreaker = 0       
+    movement_sequences = itertools.product(directions, repeat=max_steps)       
     
     for i, movement_sequence in enumerate(movement_sequences):
-        X, Y, U, V = init_meshgrids()
-        field = ants.copy()
-        traceing_field = ants.copy() # ants record steps and take them with them
-        if i == 64618 or i == 64618 or True: #print only one specific solution
-            if iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field):
-                   
-                if legal_sequence(U, V, field):
+        U, V = init_meshgrids()
+        
+        field = ants.copy()        
+        if iterate_over_each(X, Y, U, V, movement_sequence, field):
+               
+            if legal_sequence(U, V, field):
+                if plot_fields:
                     plot(X, Y, U, V)
                     print("sequence id: ", i)
-#                    print("U")
-#                    print(U)
-#                    print("V")
-#                    print(V)
-                    testbreaker += 1                
-                
-            if testbreaker > 10: break  
-
-    print("found solutions: ", testbreaker)      
+                valid_sequences.append(i)
+           
+        if i % 50000 == 0:
+            global block_time
+            print("elapsed time: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
+            block_time = time.time()
+            print("sequencing id: ", i)
+            
+    print("found solutions: ", len(valid_sequences))     
+    print("sequence IDs of solutions")
+    plot_array(valid_sequences)
         
 
 dim_x = 4
-dim_y = 2
+dim_y = 4
 max_steps = dim_x*dim_y
 up = np.array([0,-1])
 down = np.array([0,1])
@@ -161,19 +180,10 @@ right = np.array([1,0])
 directions = [up, down, left, right]
 start_point = np.array([0,0])
 total_steps = 0
-
-
-
-
+valid_sequences = []
 ants = np.zeros([dim_y, dim_x])
-#print("U")
-#print(U)
 
-# plot(X, Y, U, V)
-
+plot_fields = True
 iterate(ants)
-## plot all pairs
-#print("x y")
-#for col,row in zip(X,Y):
-#    for x,y in zip(col,row):
-#        print(int(x),int(y))
+
+print("runtime: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - start_time))
