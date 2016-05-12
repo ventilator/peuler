@@ -37,6 +37,12 @@ def plot(X, Y, U, V):
     plt.show(plot1)                 # display the plot
     
 
+def init_meshgrids():
+    # generate two mesh grids. They contain all datapoints 
+    Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]
+    U = np.zeros([dim_y, dim_x])
+    V = np.zeros([dim_y, dim_x])
+    return X, Y, U, V
     
 
 def legal_sequence(U, V, field):
@@ -97,24 +103,21 @@ def iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field
             U[y, x] = u 
             V[y, x] = v                
             field[y, x] -= 1 # ant walks away
-            tracing_step = step+1
-            step_was_here = traceing_field[y, x]
-            if step_was_here == 0: # if never someone came here, subtract steps
-                traceing_field[y, x] -= tracing_step
 
-                step_was_here = traceing_field[y, x]
+            # field: prevents two ants on the same field            
+            
+            # check if target movement vector + source vector cancel each other
+            # this would mean, swapping was here
+            if (0 <= (y-v) < dim_y) and (0 <= (x+u) < dim_x):
+                if ((U[y, x] + U[y-v, x+u]) == 0) and ((V[y, x] + V[y-v, x+u]) == 0):
+                    #swapping
+                    return False
+            
+
             if (0 <= (y-v) < dim_y) and (0 <= (x+u) < dim_x):
                 field[y-v, x+u] += 1 # ant comes here
-                
-                some_left_at_step = traceing_field[y-v, x+u]
-                if some_left_at_step == 0: # if never someone left
-                    traceing_field[y-v, x+u] = tracing_step # if never someone was here, record steps
-                else:
-                    if (traceing_field[y-v, x+u] + step_was_here) == 0: # swap was here
-                        # break tripple loop
-                        return False
+
                         
-                    
             else:
                 return False
             step += 1
@@ -122,21 +125,28 @@ def iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field
     return True
 
 
-def iterate(X, Y, U, V, ants):
+def iterate(ants):
     # generate all possible sequences of movement
     movement_sequences = itertools.product(directions, repeat=max_steps)    
-    testbreaker = 0        
-    for movement_sequence in movement_sequences:
-
+    testbreaker = 0       
+    
+    for i, movement_sequence in enumerate(movement_sequences):
+        X, Y, U, V = init_meshgrids()
         field = ants.copy()
         traceing_field = ants.copy() # ants record steps and take them with them
-        if iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field):
-               
-            if legal_sequence(U, V, field):
-                plot(X, Y, U, V)
-                testbreaker += 1                
-            
-        if testbreaker > 10: break  
+        if i == 64618 or i == 64618 or True: #print only one specific solution
+            if iterate_over_each(X, Y, U, V, ants, movement_sequence, field, traceing_field):
+                   
+                if legal_sequence(U, V, field):
+                    plot(X, Y, U, V)
+                    print("sequence id: ", i)
+#                    print("U")
+#                    print(U)
+#                    print("V")
+#                    print(V)
+                    testbreaker += 1                
+                
+            if testbreaker > 10: break  
 
     print("found solutions: ", testbreaker)      
         
@@ -152,21 +162,16 @@ directions = [up, down, left, right]
 start_point = np.array([0,0])
 total_steps = 0
 
-# generate two mesh grids. They contain all adatapoints 
-Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]
-print("Y")
-print(Y)
-print("X")
-print(X)
-U = np.zeros([dim_y, dim_x])
-V = np.zeros([dim_y, dim_x])
+
+
+
 ants = np.zeros([dim_y, dim_x])
 #print("U")
 #print(U)
 
-plot(X, Y, U, V)
+# plot(X, Y, U, V)
 
-iterate(X, Y, U, V, ants)
+iterate(ants)
 ## plot all pairs
 #print("x y")
 #for col,row in zip(X,Y):
