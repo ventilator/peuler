@@ -4,6 +4,7 @@ Created on Tue May 10 16:41:36 2016
 
 @author: gruenewa
 """
+
 # use meshgrids
 # create vector field with positions of ants (2 meshgrids X Y)
 # create vector field with movement vectors of ants (2 meshgrids U V)
@@ -11,6 +12,13 @@ Created on Tue May 10 16:41:36 2016
 
 # working with meshgrids: iterate over all contents (use zip funktion)
 # neightbours should be also the same as in a conventional cartesian grid
+
+
+# note: 4x4 grid would mean there are >4*10^9 sequences. 
+# since I need 4s per 100k sequences -> 48h per run.
+
+
+
 import numpy as np
 import itertools
 
@@ -21,6 +29,22 @@ import matplotlib.pyplot as plt
 import time
 start_time = time.time()  
 block_time = start_time  
+
+dim_x = 2
+dim_y = 2
+max_steps = dim_x*dim_y
+up = np.array([0,-1])
+down = np.array([0,1])
+left = np.array([-1,0])
+right = np.array([1,0])
+directions = [up, down, left, right]
+positive_directions = [up, right]
+negative_directions = [down, left]
+
+start_point = np.array([0,0])
+total_steps = 0
+valid_sequences = []
+ants = np.zeros([dim_y, dim_x])
 
 def plot(X, Y, U, V):    
     plot1 = plt.figure()
@@ -51,12 +75,14 @@ def plot_array(array):
 def init_meshgrids():
     # generate two mesh grids. They contain all datapoints 
 #    Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]
-    U = np.zeros([dim_y, dim_x])
-    V = np.zeros([dim_y, dim_x])    
+#    U = np.zeros([dim_y, dim_x])
+#    V = np.zeros([dim_y, dim_x])  
+    U = ants.copy() # a bit faster (20%)
+    V = ants.copy()
 #    return X, Y, U, V
     return U, V
     
-
+# as it turns out, e.g. on 2x4 field this will only be called 80 times out of 65k
 def legal_sequence(U, V, field):
     
     def momentum_converved(A):
@@ -109,17 +135,19 @@ def legal_sequence(U, V, field):
 
 
 def iterate_over_each(X, Y, U, V, movement_sequence, field):
+    def check_boundary(x,y):
+        return (0 <= y < dim_y) and (0 <= x < dim_x)
+    
     step = 0
-
     # iterate over each koordinate and apply a particular movement sequence
-    for y in range(len(X)):
-        for x in range(len(X[y])):
+    for y in range(dim_y): #hardcoded dim_? instead of len(), because faster
+        for x in range(dim_x):
             u = movement_sequence[step][0] # movement in x direction
             v = movement_sequence[step][1] # movement in y direction
             U[y, x] = u 
             V[y, x] = v                
             # field: prevents two ants on the same field, evaluated later    
-            # field[y, x] -= 1 # ant walks away # its to just track inflow instead of conversation of ants                   
+            # field[y, x] -= 1 # ant walks away # its to just track inflow instead of conservation of ants                   
 #            if field[y, x] < -1:
 #                return False
             x_u = x+u # calculate this only once, it is indeed faster by 0.5s per 25k rounds
@@ -140,17 +168,53 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
 
     return True
 
+"""
+* sequences have to conserve total momentum: sum(sequence) == 0
+* this implies during generation for each movement vector an inverse vector has to be inserted
+* this can be used in sequence generations: as many ups as downs and as many lefts as rights
+* but careful: number of ups is not equal number of rights
+* so I could generate a sequence from only ups ... up to only rights. Then invert this list add counter vectors.
+* then permutate each of this lists, then test all of them
+"""
+
+def generate_movement_sequences():
+    movement_sequences = []
+    positive_and_negative = []
+    positive_sequences = itertools.product(positive_directions, repeat=max_steps//2)       
+    for sequence in positive_sequences:
+        sequence = [x for x in sequence]
+        # print(sequence)
+        inverted = [x*-1 for x in sequence]
+
+        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence))
+        #sequence.append(inverted)
+#        print(sequence + inverted)
+#        print([[x, x*-1] for x in sequence].flatten())
+        
+    
+    # missing: permutations    
+
+generate_movement_sequences()
+import sys
+sys.exit()
 
 def iterate(ants):
     # due to massive performance drop, X, Y is only generated once. No cleanup necessary        
     Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]    
     # generate all possible sequences of movement
-    movement_sequences = itertools.product(directions, repeat=max_steps)       
+    movement_sequences = itertools.product(positive_directions, negative_directions, repeat=max_steps//2)       
+    
+    
+    #print("brutto number of sequences: ", len(directions)**(dim_x*dim_y))    
+    #print("length of one sequence: ", len(list(movement_sequences[0])))     
+    #print(list(movement_sequences))
     
     for i, movement_sequence in enumerate(movement_sequences):
+        print(movement_sequence)
         U, V = init_meshgrids()
         
-        field = ants.copy()        
+        field = ants.copy()  
+        
         if iterate_over_each(X, Y, U, V, movement_sequence, field):
                
             if legal_sequence(U, V, field):
@@ -163,27 +227,23 @@ def iterate(ants):
             global block_time
             print("elapsed time: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
             block_time = time.time()
-            print("sequencing id: ", i)
+            print("current sequencing id: ", i)
             
     print("found solutions: ", len(valid_sequences))     
     print("sequence IDs of solutions")
-    plot_array(valid_sequences)
+    if plot_fields:
+        plot_array(valid_sequences)
         
 
-dim_x = 4
-dim_y = 4
-max_steps = dim_x*dim_y
-up = np.array([0,-1])
-down = np.array([0,1])
-left = np.array([-1,0])
-right = np.array([1,0])
-directions = [up, down, left, right]
-start_point = np.array([0,0])
-total_steps = 0
-valid_sequences = []
-ants = np.zeros([dim_y, dim_x])
+
 
 plot_fields = True
-iterate(ants)
+profile_run = False
+
+if profile_run == False:
+    iterate(ants)
+else:
+    import profile 
+    profile.run('iterate(ants)')   
 
 print("runtime: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - start_time))
