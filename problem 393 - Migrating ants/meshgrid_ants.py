@@ -182,60 +182,63 @@ def generate_movement_sequences():
     positive_and_negative = []
     positive_sequences = itertools.product(positive_directions, repeat=max_steps//2)       
     for sequence in positive_sequences:
-        sequence = [x for x in sequence]
-        # print(sequence)
-        inverted = [x*-1 for x in sequence]
+        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence)))
 
-        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence))
-        #sequence.append(inverted)
-#        print(sequence + inverted)
-#        print([[x, x*-1] for x in sequence].flatten())
-        
-    
-    # missing: permutations    
+    for sequence in positive_and_negative:
+        movement_sequences.append((itertools.permutations(sequence)))       
+     
+          
+    return movement_sequences    
+ 
+test = generate_movement_sequences() 
+for i in test:
+    for j in i:
+        print(j)
 
-generate_movement_sequences()
 import sys
 sys.exit()
+        
 
 def iterate(ants):
     # due to massive performance drop, X, Y is only generated once. No cleanup necessary        
     Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]    
     # generate all possible sequences of movement
-    movement_sequences = itertools.product(positive_directions, negative_directions, repeat=max_steps//2)       
+    movement_sequences = generate_movement_sequences()
     
     
     #print("brutto number of sequences: ", len(directions)**(dim_x*dim_y))    
     #print("length of one sequence: ", len(list(movement_sequences[0])))     
-    #print(list(movement_sequences))
+    #print(list(movement_sequences))  
     
-    for i, movement_sequence in enumerate(movement_sequences):
-        print(movement_sequence)
-        U, V = init_meshgrids()
-        
-        field = ants.copy()  
-        
-        if iterate_over_each(X, Y, U, V, movement_sequence, field):
-               
-            if legal_sequence(U, V, field):
-                if plot_fields:
-                    plot(X, Y, U, V)
-                    print("sequence id: ", i)
-                valid_sequences.append(i)
-           
-        if i % 50000 == 0:
-            global block_time
-            print("elapsed time: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
-            block_time = time.time()
-            print("current sequencing id: ", i)
+    i = 0
+    for subsequences in movement_sequences:
+        for movement_sequence in subsequences:
+            i += 1
+
+
+            U, V = init_meshgrids()
             
+            field = ants.copy()  
+            
+            if iterate_over_each(X, Y, U, V, movement_sequence, field):
+                   
+                if legal_sequence(U, V, field):
+                    if plot_fields:
+                        plot(X, Y, U, V)
+                        print("sequence id: ", i)
+                    valid_sequences.append(i)
+               
+            if i % 50000 == 0:
+                global block_time
+                print("elapsed time: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
+                block_time = time.time()
+                print("current sequencing id: ", i)
+                
     print("found solutions: ", len(valid_sequences))     
     print("sequence IDs of solutions")
     if plot_fields:
         plot_array(valid_sequences)
         
-
-
 
 plot_fields = True
 profile_run = False
