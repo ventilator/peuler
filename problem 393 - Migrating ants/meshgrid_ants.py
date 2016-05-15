@@ -178,6 +178,8 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
 """
 
 def generate_movement_sequences():
+
+
     movement_sequences = []
     positive_and_negative = []
     positive_sequences = itertools.product(positive_directions, repeat=max_steps//2)       
@@ -186,14 +188,20 @@ def generate_movement_sequences():
 
     for sequence in positive_and_negative:
         movement_sequences.append((itertools.permutations(sequence)))       
-     
-          
-    return movement_sequences    
+    
+    # next step: try to remove doublettes   
+    unify = []
+    for i in movement_sequences:
+        for j in i:
+            if list(j) not in unify:
+                unify.append(list(j))
+         
+    
+    return np.unique(unify)    
  
 test = generate_movement_sequences() 
 for i in test:
-    for j in i:
-        print(j)
+    print(i)
 
 import sys
 sys.exit()
