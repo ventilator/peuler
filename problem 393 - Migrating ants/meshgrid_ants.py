@@ -90,7 +90,7 @@ def init_meshgrids():
 #    return X, Y, U, V
     return U, V
     
-# as it turns out, e.g. on 2x4 field this will only be called 80 times out of 65k
+# as it turns out, e.g. on 2x4 field this will only be called 80 times out of 65k (outdated information)
 def legal_sequence(U, V, field):
     
     def momentum_converved(A):
@@ -185,50 +185,73 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
 * then permutate each of this lists, then test all of them
 """
 
-def generate_movement_sequences():
-#    print(positive_directions)
+# help from http://stackoverflow.com/questions/12836385/how-can-i-interleave-or-create-unique-permutations-of-two-stings-without-recurs/12837695#12837695
+def unique_permutations(seq):
+    """
+    Yield only unique permutations of seq in an efficient way.
 
-#    print(positive_directions + ([tuple([y*-1 for y in direction]) for direction in positive_directions]))
-#    sys.exit()
-            
-    movement_sequences = []
-    positive_and_negative = []
-    positive_sequences = itertools.product(positive_directions, repeat=max_steps//2)       
+    A python implementation of Knuth's "Algorithm L", also known from the 
+    std::next_permutation function of C++, and as the permutation algorithm 
+    of Narayana Pandita.
+    """
+
+    # Precalculate the indices we'll be iterating over for speed
+    i_indices = range(len(seq) - 1, -1, -1)
+    k_indices = i_indices[1:]
+
+    # The algorithm specifies to start with a sorted version
+    seq = sorted(seq)
+
+    while True:
+        yield seq
+
+        # Working backwards from the last-but-one index,           k
+        # we find the index of the first decrease in value.  0 0 1 0 1 1 1 0
+        for k in k_indices:
+            if seq[k] < seq[k + 1]:
+                break
+        else:
+            # Introducing the slightly unknown python for-else syntax:
+            # else is executed only if the break statement was never reached.
+            # If this is the case, seq is weakly decreasing, and we're done.
+            return
+
+        # Get item from sequence only once, for speed
+        k_val = seq[k]
+
+        # Working backwards starting with the last item,           k     i
+        # find the first one greater than the one at k       0 0 1 0 1 1 1 0
+        for i in i_indices:
+            if k_val < seq[i]:
+                break
+
+        # Swap them in the most efficient way
+        (seq[k], seq[i]) = (seq[i], seq[k])                #       k     i
+                                                           # 0 0 1 1 1 1 0 0
+
+        # Reverse the part after but not                           k
+        # including k, also efficiently.                     0 0 1 1 0 0 1 1
+        seq[k + 1:] = seq[-1:k:-1]
+
+# end of code from stackoverflow
+
+
+def generate_movement_sequences():
+#    positive_sequences = itertools.product(positive_directions, repeat=max_steps//2) # this would generate duplicates later on through permutations
+    positive_sequences = itertools.combinations_with_replacement(positive_directions, max_steps//2)
+    
+    positive_and_negative = []    
     for sequence in positive_sequences:
-#        print(sequence)
 #        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence))) # this works for np.array like vectors as up/down
         positive_and_negative.append(sequence + tuple([tuple([y*-1 for y in direction]) for direction in sequence]))
 
+    movement_sequences = []        
     for sequence in positive_and_negative:
-        movement_sequences.append((itertools.permutations(sequence)))       
+#        movement_sequences.append((itertools.permutations(sequence)))    # this would not generate unique permutations  
+        # generate unique permutations. here would be a good points to unify them, not later, because in each set there can be (=there are) some of them
+        movement_sequences.append(unique_permutations(sequence))
     
-
-    # next step: try to remove doublettes   
-    unify = set()
-    counter = 0
-    for i in movement_sequences:
-        for j in i:
-            #print(type(j))
-#            print(j)
-            counter += 1
-            unify.add(j)
-#            else:
-#                print("dubbl")
-    print("generated sequences", len(unify), "from", counter, "sequences")     
-
-    #unify = unify.sort(key=operator.itemgetter(1))
-#    sys.exit()       
-#    print(movement_sequences)
-#    sys.exit()
-#    return movement_sequences
-    return unify
- 
-#test = generate_movement_sequences() 
-#for i in test:
-#    print(type(i))
-
-#import sys
-#sys.exit()
+    return movement_sequences
         
 
 def iterate(ants):
@@ -236,43 +259,36 @@ def iterate(ants):
     Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]    
     # generate all possible sequences of movement
     movement_sequences = generate_movement_sequences()
-    print("time to setup sequences: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - start_time))
-    
-    #print("brutto number of sequences: ", len(directions)**(dim_x*dim_y))    
-    #print("length of one sequence: ", len(list(movement_sequences[0])))     
-    #print(list(movement_sequences))  
+    print("time to setup sequence generators: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - start_time))
     
     i = 0
-    for movement_sequence in movement_sequences:
-#        for movement_sequence in subsequences:
-        if True:
+    for subsequences in movement_sequences:
+        for movement_sequence in subsequences:
             i += 1
 
-
-            U, V = init_meshgrids()
-            
+            U, V = init_meshgrids()            
             field = ants.copy()  
             
-            if iterate_over_each(X, Y, U, V, movement_sequence, field):
-                   
+            if iterate_over_each(X, Y, U, V, movement_sequence, field):                   
                 if legal_sequence(U, V, field):
                     if plot_fields:
                         plot(X, Y, U, V)
-                        print("sequence id: ", i)
+                        print("sequence id: ", i, "| total solutions so far:", len(valid_sequences)+1)
                     valid_sequences.append(i)
                
-            if i % 50000 == 0:
+            if i % 500000 == 0:
                 global block_time
-                print("elapsed time: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
+                print("elapsed time per block: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
                 block_time = time.time()
                 print("current sequencing id: ", i)
+    
                 
-    print("found solutions: ", len(valid_sequences))     
+    print("found solutions: ", len(valid_sequences), "| out of sequences:", i)     
     print("sequence IDs of solutions")
     if plot_fields:
         plot_array(valid_sequences)
         
-
+plot_fields = False
 plot_fields = True
 profile_run = False
 
