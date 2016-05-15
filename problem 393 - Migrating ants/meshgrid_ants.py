@@ -21,6 +21,8 @@ Created on Tue May 10 16:41:36 2016
 
 import numpy as np
 import itertools
+import operator
+import sys
 
 # for plotting
 from matplotlib.pyplot import cm
@@ -30,13 +32,19 @@ import time
 start_time = time.time()  
 block_time = start_time  
 
-dim_x = 2
+dim_x = 4
 dim_y = 2
 max_steps = dim_x*dim_y
-up = np.array([0,-1])
-down = np.array([0,1])
-left = np.array([-1,0])
-right = np.array([1,0])
+# hm, store directions in an hashable, immutable, ordered object (tuple)
+#up = np.array([0,-1])
+#down = np.array([0,1])
+#left = np.array([-1,0])
+#right = np.array([1,0])
+# vectors are tuples -> hashable, immutable
+up = (0,-1)
+down = (0,1)
+left = (-1,0)
+right = (1,0)
 directions = [up, down, left, right]
 positive_directions = [up, right]
 negative_directions = [down, left]
@@ -178,33 +186,49 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
 """
 
 def generate_movement_sequences():
+#    print(positive_directions)
 
-
+#    print(positive_directions + ([tuple([y*-1 for y in direction]) for direction in positive_directions]))
+#    sys.exit()
+            
     movement_sequences = []
     positive_and_negative = []
     positive_sequences = itertools.product(positive_directions, repeat=max_steps//2)       
     for sequence in positive_sequences:
-        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence)))
+#        print(sequence)
+#        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence))) # this works for np.array like vectors as up/down
+        positive_and_negative.append(sequence + tuple([tuple([y*-1 for y in direction]) for direction in sequence]))
 
     for sequence in positive_and_negative:
         movement_sequences.append((itertools.permutations(sequence)))       
     
+
     # next step: try to remove doublettes   
-    unify = []
+    unify = set()
+    counter = 0
     for i in movement_sequences:
         for j in i:
-            if list(j) not in unify:
-                unify.append(list(j))
-         
-    
-    return np.unique(unify)    
- 
-test = generate_movement_sequences() 
-for i in test:
-    print(i)
+            #print(type(j))
+#            print(j)
+            counter += 1
+            unify.add(j)
+#            else:
+#                print("dubbl")
+    print("generated sequences", len(unify), "from", counter, "sequences")     
 
-import sys
-sys.exit()
+    #unify = unify.sort(key=operator.itemgetter(1))
+#    sys.exit()       
+#    print(movement_sequences)
+#    sys.exit()
+#    return movement_sequences
+    return unify
+ 
+#test = generate_movement_sequences() 
+#for i in test:
+#    print(type(i))
+
+#import sys
+#sys.exit()
         
 
 def iterate(ants):
@@ -212,15 +236,16 @@ def iterate(ants):
     Y, X = np.mgrid[-1:-dim_y:dim_y*1j, 1:dim_x:dim_x*1j]    
     # generate all possible sequences of movement
     movement_sequences = generate_movement_sequences()
-    
+    print("time to setup sequences: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - start_time))
     
     #print("brutto number of sequences: ", len(directions)**(dim_x*dim_y))    
     #print("length of one sequence: ", len(list(movement_sequences[0])))     
     #print(list(movement_sequences))  
     
     i = 0
-    for subsequences in movement_sequences:
-        for movement_sequence in subsequences:
+    for movement_sequence in movement_sequences:
+#        for movement_sequence in subsequences:
+        if True:
             i += 1
 
 
