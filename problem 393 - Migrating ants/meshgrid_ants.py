@@ -34,7 +34,7 @@ start_time = time.time()
 block_time = start_time  
 
 dim_x = 4
-dim_y = 4
+dim_y = 2
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
 #up = np.array([0,-1])
@@ -157,8 +157,7 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
         for x in range(dim_x):
             u = movement_sequence[step][0] # movement in x direction
             v = movement_sequence[step][1] # movement in y direction
-            U[y, x] = u 
-            V[y, x] = v                
+              
             # field: prevents two ants on the same field, evaluated later    
             # field[y, x] -= 1 # ant walks away # its to just track inflow instead of conservation of ants                   
 #            if field[y, x] < -1:
@@ -166,17 +165,23 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
             x_u = x+u # calculate this only once, it is indeed faster by 0.5s per 25k rounds
             y_v = y-v
             if (0 <= (y_v) < dim_y) and (0 <= (x_u) < dim_x):
+                # check if target movement vector + source vector cancel each other
+                # this would mean that swapping was here                
+                if ((u + U[y_v, x_u]) == 0) and ((v + V[y_v, x_u]) == 0):
+                    # swapping
+                    return False
+                    
                 field[y_v, x_u] += 1 # ant comes here  
 #                if field[y-v, x+u] > 2: # more ants are already here than will walk away
 #                    return False                                                      
-                # check if target movement vector + source vector cancel each other
-                # this would mean that swapping was here                
-                if ((U[y, x] + U[y_v, x_u]) == 0) and ((V[y, x] + V[y_v, x_u]) == 0):
-                    # swapping
-                    return False
+
             else:
                 # walking out of grid
                 return False
+                
+            U[y, x] = u 
+            V[y, x] = v                  
+                
             step += 1
 
     return True
@@ -284,7 +289,7 @@ def iterate(ants):
             if i % 500000 == 0:
                 global block_time
                 print("elapsed time per block: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
-#                block_time = time.time()
+                block_time = time.time()
                 print("current sequencing id: ", '{:,}'.format(i).replace(',', ' '))
     
                 
