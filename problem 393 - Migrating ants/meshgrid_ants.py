@@ -16,7 +16,8 @@ Created on Tue May 10 16:41:36 2016
 
 # note: 4x4 grid would mean there are >4*10^9 sequences. 
 # since I need 4s per 100k sequences -> 48h per run.
-
+# after some delicate adjustment on sequence generation, one should not check
+# more than 165.636.900 sequences.
 
 
 import numpy as np
@@ -33,7 +34,7 @@ start_time = time.time()
 block_time = start_time  
 
 dim_x = 4
-dim_y = 2
+dim_y = 4
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
 #up = np.array([0,-1])
@@ -130,11 +131,15 @@ def legal_sequence(U, V, field):
         
         
     # check if ants sit on top of each other    
-    if rows_are_conserved(field) and cols_are_conserved(field):
-        return_flag = True
-    else:
-        return False
-    
+#    if rows_are_conserved(field) and cols_are_conserved(field):
+#        return_flag = True
+#    else:
+#        return False
+    return_flag = True     
+    for y in field:
+        for x in y:
+            if x != 1:
+                return False
 
     # check for step 3) is done during generation of movement vectors.
     # if target + source == 0, then swapping occured and thus sequence is discarded
@@ -273,14 +278,14 @@ def iterate(ants):
                 if legal_sequence(U, V, field):
                     if plot_fields:
                         plot(X, Y, U, V)
-                        print("sequence id: ", i, "| total solutions so far:", len(valid_sequences)+1)
+                        print("sequence id: ", '{:,}'.format(i).replace(',', ' '), "| total solutions so far:", len(valid_sequences)+1)
                     valid_sequences.append(i)
                
             if i % 500000 == 0:
                 global block_time
                 print("elapsed time per block: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
-                block_time = time.time()
-                print("current sequencing id: ", i)
+#                block_time = time.time()
+                print("current sequencing id: ", '{:,}'.format(i).replace(',', ' '))
     
                 
     print("found solutions: ", len(valid_sequences), "| out of sequences:", i)     
