@@ -34,7 +34,7 @@ start_time = time.time()
 block_time = start_time  
 
 dim_x = 4
-dim_y = 2
+dim_y = 4
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
 #up = np.array([0,-1])
@@ -244,25 +244,102 @@ def unique_permutations(seq):
         seq[k + 1:] = seq[-1:k:-1]
 
 # end of code from stackoverflow
+def next_permutation(seq, pred=lambda a, b: (a>b)-(a<b)):
+    """Like C++ std::next_permutation() but implemented as
+    generator. Yields copies of seq."""
 
+    def reverse(seq, start, end):
+        # seq = seq[:start] + reversed(seq[start:end]) + \
+        #       seq[end:]
+        end -= 1
+        if end <= start:
+            return
+        while True:
+            seq[start], seq[end] = seq[end], seq[start]
+            if start == end or start+1 == end:
+                return
+            start += 1
+            end -= 1
+    
+    if not seq:
+        raise StopIteration
+
+    try:
+        seq[0]
+    except TypeError:
+        raise TypeError("seq must allow random access.")
+
+    first = 0
+    last = len(seq)
+    seq = seq[:]
+
+    # Yield input sequence as the STL version is often
+    # used inside do {} while.
+    yield seq
+    
+    if last == 1:
+        raise StopIteration
+
+    while True:
+        next = last - 1
+
+        while True:
+            # Step 1.
+            next1 = next
+            next -= 1
+            
+            if pred(seq[next], seq[next1]) < 0:
+                # Step 2.
+                mid = last - 1
+                while not (pred(seq[next], seq[mid]) < 0):
+                    mid -= 1
+                seq[next], seq[mid] = seq[mid], seq[next]
+                
+                # Step 3.
+                reverse(seq, next1, last)
+
+                # Change to yield references to get rid of
+                # (at worst) |seq|! copy operations.
+                yield seq[:]
+                break
+            if next == first:
+                raise StopIteration
+    raise StopIteration
 
 def generate_movement_sequences():
 #    positive_sequences = itertools.product(positive_directions, repeat=max_steps//2) # this would generate duplicates later on through permutations
     positive_sequences = itertools.combinations_with_replacement(positive_directions, max_steps//2)
     
     positive_and_negative = []    
-    for sequence in positive_sequences:
+    for sequence in positive_sequences:       
 #        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence))) # this works for np.array like vectors as up/down
         positive_and_negative.append(sequence + tuple([tuple([y*-1 for y in direction]) for direction in sequence]))
 
+        
     movement_sequences = []        
     for sequence in positive_and_negative:
 #        movement_sequences.append((itertools.permutations(sequence)))    # this would not generate unique permutations  
         # generate unique permutations. here would be a good points to unify them, not later, because in each set there can be (=there are) some of them
-        movement_sequences.append(unique_permutations(sequence))
-    
-    return movement_sequences
+        movement_sequences.append(unique_permutations(sequence)) 
+#        movement_sequences.append(next_permutation(sequence)) 
         
+    return movement_sequences
+
+
+def testit():
+    sequs = generate_movement_sequences()
+    lst = []
+    for x in sequs:
+        print("end of sequence")
+        for y in x:
+            print(y)
+            lst.append(y)
+#    lst.sort()
+    for item in lst:
+        print(item)
+#        
+#testit()
+#sys.exit()
 
 def iterate(ants):
     # due to massive performance drop, X, Y is only generated once. No cleanup necessary        
@@ -275,7 +352,7 @@ def iterate(ants):
     for subsequences in movement_sequences:
         for movement_sequence in subsequences:
             i += 1
-
+#            print(movement_sequence)
             U, V = init_meshgrids()            
             field = ants.copy()  
             
@@ -298,7 +375,7 @@ def iterate(ants):
     if plot_fields:
         plot_array(valid_sequences)
         
-plot_fields = False
+#plot_fields = False
 plot_fields = True
 profile_run = False
 
