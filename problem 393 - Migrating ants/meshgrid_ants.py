@@ -161,166 +161,91 @@ def legal_sequence(U, V, field):
     return return_flag
 
 
+caching_field = []
+caching_U = []
+caching_V = []
+caching_movement_sequence = []
+
+def cache(field, U, V, sequence, step):
+    caching_field[step] = field
+    caching_U[step] = U
+    caching_V[step] = V
+    caching_movement_sequence[step] = sequence
+
+def init_cache(size):
+    global caching_field
+    global caching_U
+    global caching_V
+    global caching_movement_sequence
+    caching_field = [None] * size
+    caching_U = [None] * size
+    caching_V = [None] * size
+    caching_movement_sequence = [None] * size
+   
+def print_cache():
+    print("cached sequence")
+    print(caching_movement_sequence)
+    print("cached field")
+    for y in caching_field:
+        print(y)    
+    
+
 def iterate_over_each(X, Y, U, V, movement_sequence, field):
     def check_boundary(x,y):
         return (0 <= y < dim_y) and (0 <= x < dim_x)
     
     step = 0
+    using_cached_values = True
+    print_cache()
     # iterate over each koordinate and apply a particular movement sequence
     for y in range(dim_y): #hardcoded dim_? instead of len(), because faster        
         for x in range(dim_x):
-            u = movement_sequence[step][0] # movement in x direction
-            v = movement_sequence[step][1] # movement in y direction
-              
-            # field: prevents two ants on the same field, evaluated later    
-            # field[y, x] -= 1 # ant walks away # its to just track inflow instead of conservation of ants                   
-#            if field[y, x] < -1:
-#                return False
-            x_u = x+u # calculate this only once, it is indeed faster by 0.5s per 25k rounds
-            y_v = y-v
-            if (0 <= (y_v) < dim_y) and (0 <= (x_u) < dim_x):
-                # check if target movement vector + source vector cancel each other
-                # this would mean that swapping was here                
-                if ((u + U[y_v, x_u]) == 0) and ((v + V[y_v, x_u]) == 0):
-                    # swapping
+            if (using_cached_values==True) and (movement_sequence[step] == caching_movement_sequence[step]):
+                pass
+            else:
+                if (using_cached_values==True): #if we drop out because of missmatch
+                    # resetting state with cached values
+                    using_cached_values=False
+                    if (step != 0):
+                        U = caching_U[step]
+                        V = caching_V[step]
+                        field = caching_field[step]
+                
+                
+                
+                u = movement_sequence[step][0] # movement in x direction
+                v = movement_sequence[step][1] # movement in y direction
+                  
+                # field: prevents two ants on the same field, evaluated later    
+                # field[y, x] -= 1 # ant walks away # its to just track inflow instead of conservation of ants                   
+    #            if field[y, x] < -1:
+    #                return False
+                x_u = x+u # calculate this only once, it is indeed faster by 0.5s per 25k rounds
+                y_v = y-v
+                if (0 <= (y_v) < dim_y) and (0 <= (x_u) < dim_x):
+                    # check if target movement vector + source vector cancel each other
+                    # this would mean that swapping was here                
+                    if ((u + U[y_v, x_u]) == 0) and ((v + V[y_v, x_u]) == 0):
+                        # swapping
+                        return False
+                        
+                    field[y_v, x_u] += 1 # ant comes here  
+    #                if field[y-v, x+u] > 2: # more ants are already here than will walk away
+    #                    return False                                                      
+    
+                else:
+                    # walking out of grid
                     return False
                     
-                field[y_v, x_u] += 1 # ant comes here  
-#                if field[y-v, x+u] > 2: # more ants are already here than will walk away
-#                    return False                                                      
-
-            else:
-                # walking out of grid
-                return False
+                U[y, x] = u 
+                V[y, x] = v                  
                 
-            U[y, x] = u 
-            V[y, x] = v                  
-                
+                cache(field, U, V, movement_sequence[step], step)
+                print_cache()
             step += 1
 
     return True
 
-"""
-* sequences have to conserve total momentum: sum(sequence) == 0
-* this implies during generation for each movement vector an inverse vector has to be inserted
-* this can be used in sequence generations: as many ups as downs and as many lefts as rights
-* but careful: number of ups is not equal number of rights
-* so I could generate a sequence from only ups ... up to only rights. Then invert this list add counter vectors.
-* then permutate each of this lists, then test all of them
-"""
-
-# help from http://stackoverflow.com/questions/12836385/how-can-i-interleave-or-create-unique-permutations-of-two-stings-without-recurs/12837695#12837695
-def unique_permutations(seq):
-    """
-    Yield only unique permutations of seq in an efficient way.
-
-    A python implementation of Knuth's "Algorithm L", also known from the 
-    std::next_permutation function of C++, and as the permutation algorithm 
-    of Narayana Pandita.
-    """
-
-    # Precalculate the indices we'll be iterating over for speed
-    i_indices = range(len(seq) - 1, -1, -1)
-    k_indices = i_indices[1:]
-
-    # The algorithm specifies to start with a sorted version
-    seq = sorted(seq)
-
-    while True:
-        yield seq
-
-        # Working backwards from the last-but-one index,           k
-        # we find the index of the first decrease in value.  0 0 1 0 1 1 1 0
-        for k in k_indices:
-            if seq[k] < seq[k + 1]:
-                break
-        else:
-            # Introducing the slightly unknown python for-else syntax:
-            # else is executed only if the break statement was never reached.
-            # If this is the case, seq is weakly decreasing, and we're done.
-            return
-
-        # Get item from sequence only once, for speed
-        k_val = seq[k]
-
-        # Working backwards starting with the last item,           k     i
-        # find the first one greater than the one at k       0 0 1 0 1 1 1 0
-        for i in i_indices:
-            if k_val < seq[i]:
-                break
-
-        # Swap them in the most efficient way
-        (seq[k], seq[i]) = (seq[i], seq[k])                #       k     i
-                                                           # 0 0 1 1 1 1 0 0
-
-        # Reverse the part after but not                           k
-        # including k, also efficiently.                     0 0 1 1 0 0 1 1
-        seq[k + 1:] = seq[-1:k:-1]
-
-# end of code from stackoverflow
-
-# another implementation
-def next_permutation(seq, pred=lambda a, b: (a>b)-(a<b)):
-    """Like C++ std::next_permutation() but implemented as
-    generator. Yields copies of seq."""
-
-    def reverse(seq, start, end):
-        # seq = seq[:start] + reversed(seq[start:end]) + \
-        #       seq[end:]
-        end -= 1
-        if end <= start:
-            return
-        while True:
-            seq[start], seq[end] = seq[end], seq[start]
-            if start == end or start+1 == end:
-                return
-            start += 1
-            end -= 1
-    
-    if not seq:
-        raise StopIteration
-
-    try:
-        seq[0]
-    except TypeError:
-        raise TypeError("seq must allow random access.")
-
-    first = 0
-    last = len(seq)
-    seq = seq[:]
-
-    # Yield input sequence as the STL version is often
-    # used inside do {} while.
-    yield seq
-    
-    if last == 1:
-        raise StopIteration
-
-    while True:
-        next = last - 1
-
-        while True:
-            # Step 1.
-            next1 = next
-            next -= 1
-            
-            if pred(seq[next], seq[next1]) < 0:
-                # Step 2.
-                mid = last - 1
-                while not (pred(seq[next], seq[mid]) < 0):
-                    mid -= 1
-                seq[next], seq[mid] = seq[mid], seq[next]
-                
-                # Step 3.
-                reverse(seq, next1, last)
-
-                # Change to yield references to get rid of
-                # (at worst) |seq|! copy operations.
-                yield seq[:]
-                break
-            if next == first:
-                raise StopIteration
-    raise StopIteration
 
 def generate_movement_sequences():
 #    positive_sequences = itertools.product(positive_directions, repeat=max_steps//2) # this would generate duplicates later on through permutations
@@ -374,12 +299,14 @@ def iterate(ants):
     
     i = 0
     valid_sequences_per_seed = []
+    init_cache(max_steps)
     for seed,subsequences in enumerate(movement_sequences):
 #        print("looking at next seed.", seed,"think about excluding a seed if it has no solution")
         valid_sequences_in_this_seed = 0
         for movement_sequence in subsequences:
             i += 1
-            print(movement_sequence)
+            if test_some_iterations == True:                  
+                print(movement_sequence, "(current sequence)")
             U, V = init_meshgrids()            
             field = ants.copy()  
             
@@ -396,7 +323,10 @@ def iterate(ants):
                 print("elapsed time per block: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
                 block_time = time.time()
                 print("current sequencing id: ", '{:,}'.format(i).replace(',', ' '))
-    
+                
+            if test_some_iterations == True:
+                if i == 3:
+                    sys.exit()
 #        print("found solutions in this seed", valid_sequences_in_this_seed)  
         valid_sequences_per_seed.append([seed, valid_sequences_in_this_seed])
         
@@ -411,6 +341,8 @@ plot_fields = False
 #plot_fields = True
 plot_statistics = True
 profile_run = False
+
+test_some_iterations = True
 
 if profile_run == False:
     iterate(ants)
