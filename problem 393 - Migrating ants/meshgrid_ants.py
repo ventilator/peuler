@@ -28,13 +28,14 @@ import sys
 # for plotting
 from matplotlib.pyplot import cm
 import matplotlib.pyplot as plt
+import lexicographic_permutation
 
 import time
 start_time = time.time()  
 block_time = start_time  
 
 dim_x = 4
-dim_y = 4
+dim_y = 2
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
 #up = np.array([0,-1])
@@ -46,6 +47,8 @@ up = (0,-1)
 down = (0,1)
 left = (-1,0)
 right = (1,0)
+#up = 1
+#right = 10
 directions = [up, down, left, right]
 positive_directions = [up, right]
 negative_directions = [down, left]
@@ -79,6 +82,17 @@ def plot_array(array):
     array_plot = plt.figure()
     plt.plot(x, y, 'ro')
     plt.show(array_plot)
+    
+def plot_scatter(array2D):
+    x = []
+    y = []
+    for x_,y_ in array2D:
+        x.append(x_)
+        y.append(y_)
+        
+    array_plot = plt.figure()
+    plt.plot(x, y, 'ro')
+    plt.show(array_plot)    
         
 
 def init_meshgrids():
@@ -153,7 +167,7 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
     
     step = 0
     # iterate over each koordinate and apply a particular movement sequence
-    for y in range(dim_y): #hardcoded dim_? instead of len(), because faster
+    for y in range(dim_y): #hardcoded dim_? instead of len(), because faster        
         for x in range(dim_x):
             u = movement_sequence[step][0] # movement in x direction
             v = movement_sequence[step][1] # movement in y direction
@@ -244,6 +258,8 @@ def unique_permutations(seq):
         seq[k + 1:] = seq[-1:k:-1]
 
 # end of code from stackoverflow
+
+# another implementation
 def next_permutation(seq, pred=lambda a, b: (a>b)-(a<b)):
     """Like C++ std::next_permutation() but implemented as
     generator. Yields copies of seq."""
@@ -311,17 +327,25 @@ def generate_movement_sequences():
     positive_sequences = itertools.combinations_with_replacement(positive_directions, max_steps//2)
     
     positive_and_negative = []    
-    for sequence in positive_sequences:       
-#        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence))) # this works for np.array like vectors as up/down
-        positive_and_negative.append(sequence + tuple([tuple([y*-1 for y in direction]) for direction in sequence]))
-
-        
+    for i,sequence in enumerate(positive_sequences): 
+        # print(i)
+        #let at least some ups/down and lefts/rights be there in order to enable at least two rotations in 2D subsequence (no need for only ups or only rights)
+        if (i >= dim_x//2) and (i <= (dim_y*dim_x)//2-dim_y//2):
+            
+            print("positive seeds", sequence)
+    #        positive_and_negative.append((itertools.chain.from_iterable((x, x*-1) for x in sequence))) # this works for np.array like vectors as up/down
+            positive_and_negative.append(sequence + tuple([tuple([y*-1 for y in direction]) for direction in sequence]))
+    #        positive_and_negative.append(sequence + tuple([direction*-1 for direction in sequence]))
+            
     movement_sequences = []        
-    for sequence in positive_and_negative:
+    for i, sequence in enumerate(positive_and_negative):
+#        print("positive with negative counters", sequence)
 #        movement_sequences.append((itertools.permutations(sequence)))    # this would not generate unique permutations  
         # generate unique permutations. here would be a good points to unify them, not later, because in each set there can be (=there are) some of them
-        movement_sequences.append(unique_permutations(sequence)) 
-#        movement_sequences.append(next_permutation(sequence)) 
+#        movement_sequences.append(unique_permutations(sequence)) 
+#        if i == 2:
+        movement_sequences.append(lexicographic_permutation.next_permutation(list(sequence))) 
+#            movement_sequences.append(unique_permutations(sequence)) 
         
     return movement_sequences
 
@@ -330,14 +354,14 @@ def testit():
     sequs = generate_movement_sequences()
     lst = []
     for x in sequs:
-        print("end of sequence")
+        print("new sequence:")
         for y in x:
             print(y)
             lst.append(y)
 #    lst.sort()
-    for item in lst:
-        print(item)
-#        
+#    for item in lst:
+#        print(item)
+        
 #testit()
 #sys.exit()
 
@@ -349,10 +373,13 @@ def iterate(ants):
     print("time to setup sequence generators: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - start_time))
     
     i = 0
-    for subsequences in movement_sequences:
+    valid_sequences_per_seed = []
+    for seed,subsequences in enumerate(movement_sequences):
+#        print("looking at next seed.", seed,"think about excluding a seed if it has no solution")
+        valid_sequences_in_this_seed = 0
         for movement_sequence in subsequences:
             i += 1
-#            print(movement_sequence)
+            print(movement_sequence)
             U, V = init_meshgrids()            
             field = ants.copy()  
             
@@ -362,6 +389,7 @@ def iterate(ants):
                         plot(X, Y, U, V)
                         print("sequence id: ", '{:,}'.format(i).replace(',', ' '), "| total solutions so far:", len(valid_sequences)+1)
                     valid_sequences.append(i)
+                    valid_sequences_in_this_seed += 1
                
             if i % 500000 == 0:
                 global block_time
@@ -369,14 +397,19 @@ def iterate(ants):
                 block_time = time.time()
                 print("current sequencing id: ", '{:,}'.format(i).replace(',', ' '))
     
-                
-    print("found solutions: ", len(valid_sequences), "| out of sequences:", i)     
-    print("sequence IDs of solutions")
-    if plot_fields:
-        plot_array(valid_sequences)
+#        print("found solutions in this seed", valid_sequences_in_this_seed)  
+        valid_sequences_per_seed.append([seed, valid_sequences_in_this_seed])
         
-#plot_fields = False
-plot_fields = True
+    print("found solutions: ", len(valid_sequences), "| out of sequences:", i)     
+    if plot_statistics:
+        print("sequence IDs of solutions")
+        plot_array(valid_sequences)
+        print("legal sequences per seed of vectors")
+        plot_scatter(valid_sequences_per_seed)
+        
+plot_fields = False
+#plot_fields = True
+plot_statistics = True
 profile_run = False
 
 if profile_run == False:
