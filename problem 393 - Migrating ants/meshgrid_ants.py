@@ -35,7 +35,7 @@ start_time = time.time()
 block_time = start_time  
 
 dim_x = 4
-dim_y = 4
+dim_y = 2
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
 #up = np.array([0,-1])
@@ -59,9 +59,9 @@ valid_sequences = []
 ants = np.zeros([dim_y, dim_x])
 
 plot_fields = False
-#plot_fields = True
+plot_fields = True
 plot_statistics = True
-plot_statistics = False
+#plot_statistics = False
 
 test_some_iterations = True
 test_some_iterations = False
@@ -70,6 +70,7 @@ printout_cache = False
 
 activate_cache = True
 #activate_cache = False
+times_cache_used = 0
 
 def plot(X, Y, U, V):    
     plot1 = plt.figure()
@@ -184,9 +185,9 @@ def cache(field, U, V, sequence, step):
     caching_U[step] = U.copy()
     caching_V[step] = V.copy()
     caching_movement_sequence[step] = sequence
-    # invalidate future steps from last iteration
-    for i in range(step+1, max_steps):
-        caching_movement_sequence[i] = None
+    # invalidate future steps from last iteration # needs only be done if cache is accessed
+#    for i in range(step+1, max_steps):
+#        caching_movement_sequence[i] = None
     global times_cache_used
     times_cache_used += 1
 
@@ -201,10 +202,15 @@ def init_cache(size):
     caching_movement_sequence = [None] * size
 
 def get_cache_and_delete_future(step):
+    # invalidate future steps from last iteration
+    global caching_movement_sequence
+    for i in range(step+1, max_steps):
+        caching_movement_sequence[i] = None
+
     global caching_field
     global caching_U
     global caching_V
-
+    
     return caching_field[step].copy(), caching_U[step].copy(), caching_V[step].copy()     
    
 def print_cache():
@@ -216,7 +222,7 @@ def print_cache():
             print(y)    
     
 
-def iterate_over_each(X, Y, U, V, movement_sequence, field):
+def iterate_over_each(U, V, movement_sequence, field):
     def check_boundary(x,y):
         return (0 <= y < dim_y) and (0 <= x < dim_x)
     
@@ -228,11 +234,12 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
         for x in range(dim_x):
             iterate = True
             if activate_cache == True:
-                if (using_cached_values==True) and (movement_sequence[step] == caching_movement_sequence[step]):
-#                    print("doing nothing since there is a cached value present", movement_sequence[step])
-                    iterate = False
-                else:
-                    if using_cached_values==True: #if we drop out because of missmatch
+                if (using_cached_values==True):
+                    if (movement_sequence[step] == caching_movement_sequence[step]):
+    #                    print("doing nothing since there is a cached value present", movement_sequence[step])
+                        iterate = False
+                    else:
+                        #if we drop out because of missmatch
 #                        print("no cached sequence found, walking into new territory", movement_sequence[step])
                         # resetting state with cached values
                         using_cached_values=False
@@ -342,7 +349,7 @@ def iterate(ants):
             U, V = init_meshgrids()            
             field = ants.copy()  
             
-            no_objection, field, U, V = iterate_over_each(X, Y, U, V, movement_sequence, field)
+            no_objection, field, U, V = iterate_over_each(U, V, movement_sequence, field)
             if no_objection == True:                   
                 if legal_sequence(U, V, field):
                     if plot_fields:
@@ -397,9 +404,9 @@ def iterate(ants):
         
 
 
-times_cache_used = 0
 
 
+profile_run = True
 profile_run = False
 if profile_run == False:
     iterate(ants)
