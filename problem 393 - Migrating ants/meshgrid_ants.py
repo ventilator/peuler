@@ -35,7 +35,7 @@ start_time = time.time()
 block_time = start_time  
 
 dim_x = 4
-dim_y = 2
+dim_y = 4
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
 #up = np.array([0,-1])
@@ -57,6 +57,19 @@ start_point = np.array([0,0])
 total_steps = 0
 valid_sequences = []
 ants = np.zeros([dim_y, dim_x])
+
+plot_fields = False
+#plot_fields = True
+plot_statistics = True
+plot_statistics = False
+
+test_some_iterations = True
+test_some_iterations = False
+printout_cache = True
+printout_cache = False
+
+activate_cache = True
+#activate_cache = False
 
 def plot(X, Y, U, V):    
     plot1 = plt.figure()
@@ -167,10 +180,15 @@ caching_V = []
 caching_movement_sequence = []
 
 def cache(field, U, V, sequence, step):
-    caching_field[step] = field
-    caching_U[step] = U
-    caching_V[step] = V
+    caching_field[step] = field.copy()
+    caching_U[step] = U.copy()
+    caching_V[step] = V.copy()
     caching_movement_sequence[step] = sequence
+    # invalidate future steps from last iteration
+    for i in range(step+1, max_steps):
+        caching_movement_sequence[i] = None
+    global times_cache_used
+    times_cache_used += 1
 
 def init_cache(size):
     global caching_field
@@ -181,13 +199,21 @@ def init_cache(size):
     caching_U = [None] * size
     caching_V = [None] * size
     caching_movement_sequence = [None] * size
+
+def get_cache_and_delete_future(step):
+    global caching_field
+    global caching_U
+    global caching_V
+
+    return caching_field[step].copy(), caching_U[step].copy(), caching_V[step].copy()     
    
 def print_cache():
-    print("cached sequence")
-    print(caching_movement_sequence)
-    print("cached field")
-    for y in caching_field:
-        print(y)    
+    if printout_cache == True:
+        print("cached sequence")
+        print(caching_movement_sequence)
+        print("cached field")
+        for y in caching_field:
+            print(y)    
     
 
 def iterate_over_each(X, Y, U, V, movement_sequence, field):
@@ -200,19 +226,23 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
     # iterate over each koordinate and apply a particular movement sequence
     for y in range(dim_y): #hardcoded dim_? instead of len(), because faster        
         for x in range(dim_x):
-            if (using_cached_values==True) and (movement_sequence[step] == caching_movement_sequence[step]):
-                pass
-            else:
-                if (using_cached_values==True): #if we drop out because of missmatch
-                    # resetting state with cached values
-                    using_cached_values=False
-                    if (step != 0):
-                        U = caching_U[step]
-                        V = caching_V[step]
-                        field = caching_field[step]
+            iterate = True
+            if activate_cache == True:
+                if (using_cached_values==True) and (movement_sequence[step] == caching_movement_sequence[step]):
+#                    print("doing nothing since there is a cached value present", movement_sequence[step])
+                    iterate = False
+                else:
+                    if using_cached_values==True: #if we drop out because of missmatch
+#                        print("no cached sequence found, walking into new territory", movement_sequence[step])
+                        # resetting state with cached values
+                        using_cached_values=False
+                        if (step != 0):
+                            field, U, V = get_cache_and_delete_future(step-1)
                 
                 
-                
+            if (activate_cache == False) or (iterate == True): 
+                if printout_cache == True:
+                    print("processing", movement_sequence[step])
                 u = movement_sequence[step][0] # movement in x direction
                 v = movement_sequence[step][1] # movement in y direction
                   
@@ -227,7 +257,7 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
                     # this would mean that swapping was here                
                     if ((u + U[y_v, x_u]) == 0) and ((v + V[y_v, x_u]) == 0):
                         # swapping
-                        return False
+                        return False, field, U, V
                         
                     field[y_v, x_u] += 1 # ant comes here  
     #                if field[y-v, x+u] > 2: # more ants are already here than will walk away
@@ -235,16 +265,18 @@ def iterate_over_each(X, Y, U, V, movement_sequence, field):
     
                 else:
                     # walking out of grid
-                    return False
+                    return False, field, U, V
                     
                 U[y, x] = u 
                 V[y, x] = v                  
                 
-                cache(field, U, V, movement_sequence[step], step)
-                print_cache()
+                if activate_cache == True:
+                    cache(field, U, V, movement_sequence[step], step)
+                    print_cache()
+                
             step += 1
 
-    return True
+    return True, field, U, V
 
 
 def generate_movement_sequences():
@@ -310,7 +342,8 @@ def iterate(ants):
             U, V = init_meshgrids()            
             field = ants.copy()  
             
-            if iterate_over_each(X, Y, U, V, movement_sequence, field):                   
+            no_objection, field, U, V = iterate_over_each(X, Y, U, V, movement_sequence, field)
+            if no_objection == True:                   
                 if legal_sequence(U, V, field):
                     if plot_fields:
                         plot(X, Y, U, V)
@@ -323,9 +356,34 @@ def iterate(ants):
                 print("elapsed time per block: \x1b[1;31m%.1fs\x1b[0m" % (time.time() - block_time))
                 block_time = time.time()
                 print("current sequencing id: ", '{:,}'.format(i).replace(',', ' '))
+             
+#            if i == 664:
+#                print("######## processing iteration id", i+1)
+#                global test_some_iterations
+#                global printout_cache
+#                
+#                test_some_iterations = True
+#                printout_cache = True
+#                
+#            if i == 665:
+#                print("we are at step", i)
+#                print("this should be valid")
+#                print(U, "U")
+#                print(V, "V")
+#                print("caching U")
+#                for Uu in caching_U:
+#                    print(Uu)
+#                
+#                plot(X, Y, U, V)
+#                print("######## processing iteration id", i+1)
+#                
+#            if i == 666:
+#                print("######## processing iteration id", i+1)
+#                sys.exit()  
                 
             if test_some_iterations == True:
-                if i == 3:
+#                if i == 3:
+                if times_cache_used > 100:
                     sys.exit()
 #        print("found solutions in this seed", valid_sequences_in_this_seed)  
         valid_sequences_per_seed.append([seed, valid_sequences_in_this_seed])
@@ -337,13 +395,12 @@ def iterate(ants):
         print("legal sequences per seed of vectors")
         plot_scatter(valid_sequences_per_seed)
         
-plot_fields = False
-#plot_fields = True
-plot_statistics = True
+
+
+times_cache_used = 0
+
+
 profile_run = False
-
-test_some_iterations = True
-
 if profile_run == False:
     iterate(ants)
 else:
