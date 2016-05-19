@@ -19,6 +19,9 @@ Created on Tue May 10 16:41:36 2016
 # after some delicate adjustment on sequence generation, one should not check
 # more than 165.636.900 sequences.
 
+# with caching of the previous sequence: 88 solutions in 1060s (with drawing)
+# found solutions:  88 | out of sequences: 163963800
+# next step: due to symmetrie resions this can be cut in half
 
 import numpy as np
 import itertools
@@ -35,7 +38,7 @@ start_time = time.time()
 block_time = start_time  
 
 dim_x = 4
-dim_y = 2
+dim_y = 4
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
 #up = np.array([0,-1])
