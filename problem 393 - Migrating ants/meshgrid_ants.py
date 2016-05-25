@@ -62,9 +62,9 @@ valid_sequences = []
 ants = np.zeros([dim_y, dim_x])
 
 plot_fields = False
-plot_fields = True
+#plot_fields = True
 plot_statistics = True
-#plot_statistics = False
+plot_statistics = False
 
 test_some_iterations = True
 test_some_iterations = False
