@@ -61,6 +61,10 @@ def rotate_by_one(array):
     array.insert(0, last)
     return array
     
+def block_printer(block):
+    print(block["outflux"], "outflux")                
+    print(block["influx"], "influx")
+
     
 def generate_all_upright_1x1_blocks():
     block = generate_upright_1x1_seed_block()    
@@ -86,7 +90,8 @@ def generate_all_1x1_blocks():
     
 blocks = generate_all_1x1_blocks()
 for i, block in enumerate(blocks):
-    print(i, block)
+    print(i)
+    block_printer(block)
     
 def stack_blocks(upper_block, lower_block):
     fit_together = False
@@ -108,7 +113,9 @@ def generate_all_1x2_blocks():
             fit_together, block_1x2 = stack_blocks(upper_block, lower_block)
             if fit_together:
                 blocks_1x2.append(block_1x2)
-                print("upper", upper_block)
-                print("lower", lower_block)
+                block_printer(upper_block)
+                block_printer(lower_block)                
+
+
     
 generate_all_1x2_blocks()
