@@ -104,14 +104,14 @@ def stack_blocks(upper_block, lower_block):
             fit_together = True
     return fit_together, None
     
-def generate_all_1x2_blocks():
-    blocks_1x2 = []
     
+def generate_all_1x2_blocks():
+    blocks_1x2 = []    
     blocks_1x1 = generate_all_1x1_blocks()
     for upper_block in blocks_1x1:
         for lower_block in blocks_1x1:
             fit_together, block_1x2 = stack_blocks(upper_block, lower_block)
-            if fit_together:
+            if fit_together == True:
                 blocks_1x2.append(block_1x2)
                 block_printer(upper_block)
                 block_printer(lower_block)                
