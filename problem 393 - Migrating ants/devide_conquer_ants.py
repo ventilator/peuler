@@ -47,6 +47,8 @@ of possibilities to create this states (should be still 1 per block)
 
 then create 2x2 block out of 1x2 blocks
 """
+
+
 def generate_upright_1x1_seed_block():
     block = dict()
     block["size"] = [1,1]
@@ -61,11 +63,27 @@ def rotate_by_one(array):
     array.insert(0, last)
     return array
     
-def block_printer(block):
-    print(block["outflux"], "outflux")                
-    print(block["influx"], "influx")
-
     
+def block_printer(block):
+#    print(block["outflux"], "outflux")                
+#    print(block["influx"], "influx")
+    def get_arrow(edge_array):
+        ARROW_UP = '\u2191'   
+        ARROW_RIGHT = '\u2190' 
+        ARROW_DOWN = '\u2193'
+        ARROW_LEFT = '\u2192'
+        LUT = [ARROW_UP, ARROW_RIGHT, ARROW_DOWN, ARROW_LEFT]
+        for i, edge in enumerate(edge_array):
+            if edge == [1]:
+                return LUT[i]
+        return "no flux found"
+                
+    print(get_arrow(block["outflux"]), "outflux")
+    print(get_arrow(block["influx"]), "influx")
+    
+        
+
+    # take upright outflux with the 3 possible influxes (upright inflix would be a swap, hence only 3 blocks)
 def generate_all_upright_1x1_blocks():
     block = generate_upright_1x1_seed_block()    
     blocks = []
@@ -88,20 +106,15 @@ def generate_all_1x1_blocks():
     return all_blocks
     
     
-blocks = generate_all_1x1_blocks()
-for i, block in enumerate(blocks):
-    print(i)
-    block_printer(block)
-    
 def stack_blocks(upper_block, lower_block):
     fit_together = False
-    # check, if upper can or won't give something to lower and lower does not want to give something back (would be swap)
-    if (upper_block["outflux"][2] == lower_block["influx"][0]) and (0 == lower_block["outflux"][0]):
+    # check, if upper matches to lower and if it is not a swap
+    if (upper_block["outflux"][2][0] == lower_block["influx"][0][0]) and\
+        (lower_block["outflux"][0][0] == upper_block["influx"][2][0]) and\
+        ((upper_block["outflux"][2][0] + lower_block["outflux"][0][0]) < 2):
         fit_together = True
     else:
-        # check, if lower can or won't give something to upper and upper does not want to give something back (would be swap)
-        if (lower_block["outflux"][0] == upper_block["influx"][2]) and (0 == upper_block["outflux"][2]):
-            fit_together = True
+        fit_together = False
     return fit_together, None
     
     
@@ -117,5 +130,8 @@ def generate_all_1x2_blocks():
                 block_printer(lower_block)                
 
 
-    
+#blocks = generate_all_1x1_blocks()
+#for i, block in enumerate(blocks):
+##    print(i)
+#    block_printer(block)    
 generate_all_1x2_blocks()
