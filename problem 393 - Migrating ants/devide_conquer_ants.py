@@ -62,27 +62,34 @@ def rotate_by_one(array):
     last = array.pop()
     array.insert(0, last)
     return array
+
     
+def get_arrow(edge_array):
+    ARROW_UP = '\u2191'   
+    ARROW_RIGHT = '\u2190' 
+    ARROW_DOWN = '\u2193'
+    ARROW_LEFT = '\u2192'
+    LUT = [ARROW_UP, ARROW_RIGHT, ARROW_DOWN, ARROW_LEFT]
+    for i, edge in enumerate(edge_array):
+        if edge == [1]:
+            return LUT[i]
+    return "no flux found"    
+
     
 def block_printer(block):
 #    print(block["outflux"], "outflux")                
-#    print(block["influx"], "influx")
-    def get_arrow(edge_array):
-        ARROW_UP = '\u2191'   
-        ARROW_RIGHT = '\u2190' 
-        ARROW_DOWN = '\u2193'
-        ARROW_LEFT = '\u2192'
-        LUT = [ARROW_UP, ARROW_RIGHT, ARROW_DOWN, ARROW_LEFT]
-        for i, edge in enumerate(edge_array):
-            if edge == [1]:
-                return LUT[i]
-        return "no flux found"
-                
+#    print(block["influx"], "influx")                
     print(get_arrow(block["outflux"]), "outflux")
     print(get_arrow(block["influx"]), "influx")
+
+
+# pretty sure this block printer does not print left/right side with possible 2 arrows    
+def _1x2_block_printer(upper, lower):
+    print("o", get_arrow(upper["outflux"]), "i", get_arrow(upper["influx"]))
+    print("i", get_arrow(lower["influx"]), "o", get_arrow(lower["outflux"]))
+    print("_")
     
         
-
     # take upright outflux with the 3 possible influxes (upright inflix would be a swap, hence only 3 blocks)
 def generate_all_upright_1x1_blocks():
     block = generate_upright_1x1_seed_block()    
@@ -106,13 +113,23 @@ def generate_all_1x1_blocks():
     return all_blocks
     
     
-def stack_blocks(upper_block, lower_block):
+def stack_1x1_blocks(upper_block, lower_block):
     fit_together = False
     # check, if upper matches to lower and if it is not a swap
     if (upper_block["outflux"][2][0] == lower_block["influx"][0][0]) and\
         (lower_block["outflux"][0][0] == upper_block["influx"][2][0]) and\
         ((upper_block["outflux"][2][0] + lower_block["outflux"][0][0]) < 2):
         fit_together = True
+        
+        # generate new block
+        block = dict()
+                        #x,y
+        block["size"] = [1,2]
+        # edges are indexed by up, right, bot, left = 0,1,2,3 (inside an edge numbering follows clockwise)
+        # flow on touching edges is consumed/not reported anymore/does not matter
+        for direction in ["outflux", "influx"]:
+            block[direction] = [upper_block[direction][0], upper_block[direction][1]+lower_block[direction][1], lower_block[direction][2], lower_block[direction][3]+upper_block[direction][3]]      
+        return fit_together, block
     else:
         fit_together = False
     return fit_together, None
@@ -121,13 +138,15 @@ def stack_blocks(upper_block, lower_block):
 def generate_all_1x2_blocks():
     blocks_1x2 = []    
     blocks_1x1 = generate_all_1x1_blocks()
+    print(len(blocks_1x1), "1x1 have been generated")
     for upper_block in blocks_1x1:
         for lower_block in blocks_1x1:
-            fit_together, block_1x2 = stack_blocks(upper_block, lower_block)
+            fit_together, block_1x2 = stack_1x1_blocks(upper_block, lower_block)
             if fit_together == True:
                 blocks_1x2.append(block_1x2)
-                block_printer(upper_block)
-                block_printer(lower_block)                
+                #_1x2_block_printer(upper_block, lower_block)    
+    print(len(blocks_1x2), "blocks_1x2 fit together, out of", len(blocks_1x1)**2)
+    print("demo 1x2 block", blocks_1x2[0])            
 
 
 #blocks = generate_all_1x1_blocks()
