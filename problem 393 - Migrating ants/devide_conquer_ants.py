@@ -3,15 +3,7 @@
 
 """
 import copy
-
-
-
-
-
-
-
-
-
+import pprint
 
 
 
@@ -112,9 +104,25 @@ def generate_all_1x1_blocks():
             all_blocks.append(copy.deepcopy(block)) # three additional rotated blocks of blocks           
     return all_blocks
     
+
+def integrity_check(block):
+    passing = True
+    if sum(sum(x) for x in block["outflux"]) != sum(sum(x) for x in block["influx"]):    
+        passing = False
         
-    # stacks horizontal or vertical
-def stack_2_blocks(upper_block, lower_block, configuration):
+    if not passing:        
+        print("invalid block")
+        pprint.pprint(block)        
+        
+    return passing    
+        
+    #configuration: stack horizontal or vertical. border: side with no out/influx allowed
+def stack_2_blocks(upper_block, lower_block, configuration, border):
+    #check 
+    integrity_check(upper_block)
+    integrity_check(lower_block)
+
+        
     fit_together = False
     if configuration == "horizontal":
         # "upper" is the block on the right side in horizontal configuration
@@ -125,10 +133,19 @@ def stack_2_blocks(upper_block, lower_block, configuration):
         else:
             print("illegal stacking configuration")
             return False, None
-    # check, if upper matches to lower and if it is not a swap
-    if (upper_block["outflux"][touching_sides["upper"]] == lower_block["influx"][touching_sides["lower"]]) and\
-        (lower_block["outflux"][touching_sides["lower"]] == upper_block["influx"][touching_sides["upper"]]) and\
-        (sum(upper_block["outflux"][touching_sides["upper"]] + lower_block["outflux"][touching_sides["lower"]]) < len(upper_block["outflux"][touching_sides["upper"]])+1):
+            
+    # check if upper matches to lower and if it is not a swap
+    # swap check
+    swap = False
+    for i, flux in enumerate(upper_block["outflux"][touching_sides["upper"]]):
+        if flux == 1 and lower_block["outflux"][touching_sides["lower"]][i] == 1:
+            swap = True
+            break
+    
+    if (not swap) and\
+        (upper_block["outflux"][touching_sides["upper"]] == lower_block["influx"][touching_sides["lower"]]) and\
+        (lower_block["outflux"][touching_sides["lower"]] == upper_block["influx"][touching_sides["upper"]]):
+        #(sum(upper_block["outflux"][touching_sides["upper"]] + lower_block["outflux"][touching_sides["lower"]]) < len(upper_block["outflux"][touching_sides["upper"]])+1):
         fit_together = True
         
         # generate new block
@@ -151,34 +168,92 @@ def stack_2_blocks(upper_block, lower_block, configuration):
                 return False, None
             for direction in ["outflux", "influx"]:
                 block[direction] = [upper_block[direction][0]+lower_block[direction][0], lower_block[direction][1], lower_block[direction][2]+upper_block[direction][2], upper_block[direction][3]]            
-    
+        
+        # check if border violation 
+        for side in border:
+            for direction in ["outflux", "influx"]: 
+                if sum(block[direction][side]) != 0:
+                    return False, None
+                
         return fit_together, block
     else:
         fit_together = False
     return fit_together, None     
-    
-    
+        
          
-def generate_all_combinations(input_blocks, configuration):
-    if len(input_blocks) == 0:
+def generate_all_combinations(upper_blocks, lower_blocks, configuration, border):
+    if len(upper_blocks) == 0 or len(lower_blocks) == 0:
         print("failure, no input_blocks")
     output_blocks = []
-    for upper_block in input_blocks:
-        for lower_block in input_blocks:
-            fit_together, stacked_block = stack_2_blocks(upper_block, lower_block, configuration)
+    for upper_block in upper_blocks:
+        for lower_block in lower_blocks:
+            fit_together, stacked_block = stack_2_blocks(upper_block, lower_block, configuration, border)
             if fit_together == True:
                 output_blocks.append(stacked_block)
     if len(output_blocks) > 0:            
-        print("generated", len(output_blocks), output_blocks[0]["size"], "out of", len(input_blocks), input_blocks[0]["size"])            
-    return output_blocks            
+        print("generated", len(output_blocks), output_blocks[0]["size"], "out of", len(upper_blocks), upper_blocks[0]["size"], "and",  len(lower_blocks), lower_blocks[0]["size"] )            
+    return output_blocks      
+      
 
-def build_up():
+def build_up_closed_4x4():
+    seed_1x1_blocks = generate_all_1x1_blocks()
+    blocks_1x2 = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, "vertical", [])  
+    blocks_2x2_dl = generate_all_combinations(blocks_1x2, blocks_1x2, "horizontal", [2,3]) 
+    blocks_2x2_dr = generate_all_combinations(blocks_1x2, blocks_1x2, "horizontal", [1,2]) 
+    blocks_2x2_ul = generate_all_combinations(blocks_1x2, blocks_1x2, "horizontal", [0,3]) 
+    blocks_2x2_ur = generate_all_combinations(blocks_1x2, blocks_1x2, "horizontal", [0,1])
+
+    blocks_2x4_l = generate_all_combinations(blocks_2x2_ul, blocks_2x2_dl, "vertical", [0,2,3])   
+    blocks_2x4_r = generate_all_combinations(blocks_2x2_ur, blocks_2x2_dr, "vertical", [0,1,2]) 
+
+    blocks_4x4 = generate_all_combinations(blocks_2x4_l, blocks_2x4_r, "horizontal", [0,1,2,3])       
+
+    return len(blocks_4x4)
+    
+    
+def build_up_closed_2x4():
+    seed_1x1_blocks = generate_all_1x1_blocks()
+    blocks_1x2 = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, "vertical", [])  
+
+    blocks_2x2_u = generate_all_combinations(blocks_1x2, blocks_1x2, "horizontal", [0,1,3]) 
+    blocks_2x2_l = generate_all_combinations(blocks_1x2, blocks_1x2, "horizontal", [1,2,3])
+    pprint.pprint(blocks_2x2_l)
+
+    blocks_2x4 = generate_all_combinations(blocks_2x2_u, blocks_2x2_l, "vertical", [0,1,2,3])   
+
+    return len(blocks_2x4)    
+    
+    
+def build_up_closed_2x2():
+    seed_1x1_blocks = generate_all_1x1_blocks()
+    blocks_1x2_l = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, "vertical", [0,2,3]) 
+    blocks_1x2_r = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, "vertical", [0,1,2])       
+    blocks_2x2 = generate_all_combinations(blocks_1x2_l, blocks_1x2_r, "horizontal", [0,1,2,3]) 
+    return len(blocks_2x2)    
+ 
+    
+def test_algorithm():
     seed_1x1_blocks = generate_all_1x1_blocks()
     if len(seed_1x1_blocks) != 12:
-        print("Warning:", len(seed_1x1_blocks), "1x1 have been generated. Should be 12")
-    blocks_1x2 = generate_all_combinations(seed_1x1_blocks, "vertical")  
-    blocks_2x2 = generate_all_combinations(blocks_1x2, "horizontal") 
-    blocks_2x4 = generate_all_combinations(blocks_2x2, "vertical") 
-    blocks_4x4 = generate_all_combinations(blocks_2x4, "horizontal")     
+        print("Warning:", len(seed_1x1_blocks), "1x1 have been generated. Should be 12")   
     
-build_up()
+    n_2x2 = build_up_closed_2x2()
+    if n_2x2 != 2:
+        print("2x2 test failed with", n_2x2)
+    else:
+        print("2x2 test passed with", n_2x2)
+        
+    n_2x4 = build_up_closed_2x4()
+    if n_2x4 != 6:
+        print("2x4 test failed with", n_2x4)
+    else:
+        print("2x4 test passed with", n_2x4)            
+        
+    n_4x4 = build_up_closed_4x4()
+    if n_4x4 != 88:
+        print("4x4 test failed with", n_4x4)
+    else:
+        print("4x4 test passed with", n_4x4)        
+        
+test_algorithm()        
+#build_up()

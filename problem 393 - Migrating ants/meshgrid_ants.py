@@ -38,7 +38,7 @@ start_time = time.time()
 block_time = start_time  
 
 dim_x = 4
-dim_y = 4
+dim_y = 2
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
 #up = np.array([0,-1])
@@ -62,7 +62,7 @@ valid_sequences = []
 ants = np.zeros([dim_y, dim_x])
 
 plot_fields = False
-#plot_fields = True
+plot_fields = True
 plot_statistics = True
 plot_statistics = False
 
