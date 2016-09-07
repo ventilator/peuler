@@ -158,23 +158,27 @@ def stack_2_blocks(upper_block, lower_block, configuration):
     return fit_together, None     
     
     
-def generate_all_1x2_blocks():   
-    blocks_1x1 = generate_all_1x1_blocks()
-    if len(blocks_1x1) != 12:
-        print("Warning:", len(blocks_1x1), "1x1 have been generated. Should be 12")
-    blocks_1x2 = [] 
-    for upper_block in blocks_1x1:
-        for lower_block in blocks_1x1:
-            fit_together, block_1x2 = stack_2_blocks(upper_block, lower_block, "vertical")
+         
+def generate_all_combinations(input_blocks, configuration):
+    if len(input_blocks) == 0:
+        print("failure, no input_blocks")
+    output_blocks = []
+    for upper_block in input_blocks:
+        for lower_block in input_blocks:
+            fit_together, stacked_block = stack_2_blocks(upper_block, lower_block, configuration)
             if fit_together == True:
-                blocks_1x2.append(block_1x2)
-                #_1x2_block_printer(upper_block, lower_block)    
-    print(len(blocks_1x2), "blocks_1x2 fit together, out of", len(blocks_1x1)**2)
-    print("demo 1x2 block", blocks_1x2[0])            
+                output_blocks.append(stacked_block)
+    if len(output_blocks) > 0:            
+        print("generated", len(output_blocks), output_blocks[0]["size"], "out of", len(input_blocks), input_blocks[0]["size"])            
+    return output_blocks            
 
-
-#blocks = generate_all_1x1_blocks()
-#for i, block in enumerate(blocks):
-##    print(i)
-#    block_printer(block)    
-generate_all_1x2_blocks()
+def build_up():
+    seed_1x1_blocks = generate_all_1x1_blocks()
+    if len(seed_1x1_blocks) != 12:
+        print("Warning:", len(seed_1x1_blocks), "1x1 have been generated. Should be 12")
+    blocks_1x2 = generate_all_combinations(seed_1x1_blocks, "vertical")  
+    blocks_2x2 = generate_all_combinations(blocks_1x2, "horizontal") 
+    blocks_2x4 = generate_all_combinations(blocks_2x2, "vertical") 
+    blocks_4x4 = generate_all_combinations(blocks_2x4, "horizontal")     
+    
+build_up()
