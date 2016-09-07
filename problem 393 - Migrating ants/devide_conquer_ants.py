@@ -112,36 +112,60 @@ def generate_all_1x1_blocks():
             all_blocks.append(copy.deepcopy(block)) # three additional rotated blocks of blocks           
     return all_blocks
     
-    
-def stack_1x1_blocks(upper_block, lower_block):
+        
+    # stacks horizontal or vertical
+def stack_2_blocks(upper_block, lower_block, configuration):
     fit_together = False
+    if configuration == "horizontal":
+        # "upper" is the block on the right side in horizontal configuration
+        touching_sides = {"upper":1, "lower":3} 
+    else:
+        if configuration == "vertical":
+            touching_sides = {"upper":2, "lower":0} 
+        else:
+            print("illegal stacking configuration")
+            return False, None
     # check, if upper matches to lower and if it is not a swap
-    if (upper_block["outflux"][2][0] == lower_block["influx"][0][0]) and\
-        (lower_block["outflux"][0][0] == upper_block["influx"][2][0]) and\
-        ((upper_block["outflux"][2][0] + lower_block["outflux"][0][0]) < 2):
+    if (upper_block["outflux"][touching_sides["upper"]] == lower_block["influx"][touching_sides["lower"]]) and\
+        (lower_block["outflux"][touching_sides["lower"]] == upper_block["influx"][touching_sides["upper"]]) and\
+        (sum(upper_block["outflux"][touching_sides["upper"]] + lower_block["outflux"][touching_sides["lower"]]) < len(upper_block["outflux"][touching_sides["upper"]])+1):
         fit_together = True
         
         # generate new block
         block = dict()
-                        #x,y
-        block["size"] = [1,2]
-        # edges are indexed by up, right, bot, left = 0,1,2,3 (inside an edge numbering follows clockwise)
-        # flow on touching edges is consumed/not reported anymore/does not matter
-        for direction in ["outflux", "influx"]:
-            block[direction] = [upper_block[direction][0], upper_block[direction][1]+lower_block[direction][1], lower_block[direction][2], lower_block[direction][3]+upper_block[direction][3]]      
+        
+        if configuration == "vertical":
+                            #x,y
+            block["size"] = [upper_block["size"][0], upper_block["size"][1]+lower_block["size"][1]]
+            if upper_block["size"][0] != lower_block["size"][0]:
+                print("Warning: blocks cannot be stacked, size missmatch")
+                return False, None
+            # edges are indexed by up, right, bot, left = 0,1,2,3 (inside an edge numbering follows clockwise)
+            # flow on touching edges is consumed/not reported anymore/does not matter
+            for direction in ["outflux", "influx"]:
+                block[direction] = [upper_block[direction][0], upper_block[direction][1]+lower_block[direction][1], lower_block[direction][2], lower_block[direction][3]+upper_block[direction][3]]  
+        else:
+            block["size"] = [upper_block["size"][0]+lower_block["size"][0], upper_block["size"][1]]
+            if upper_block["size"][1] != lower_block["size"][1]:
+                print("Warning: blocks cannot be stacked, size missmatch")
+                return False, None
+            for direction in ["outflux", "influx"]:
+                block[direction] = [upper_block[direction][0]+lower_block[direction][0], lower_block[direction][1], lower_block[direction][2]+upper_block[direction][2], upper_block[direction][3]]            
+    
         return fit_together, block
     else:
         fit_together = False
-    return fit_together, None
+    return fit_together, None     
     
     
-def generate_all_1x2_blocks():
-    blocks_1x2 = []    
+def generate_all_1x2_blocks():   
     blocks_1x1 = generate_all_1x1_blocks()
-    print(len(blocks_1x1), "1x1 have been generated")
+    if len(blocks_1x1) != 12:
+        print("Warning:", len(blocks_1x1), "1x1 have been generated. Should be 12")
+    blocks_1x2 = [] 
     for upper_block in blocks_1x1:
         for lower_block in blocks_1x1:
-            fit_together, block_1x2 = stack_1x1_blocks(upper_block, lower_block)
+            fit_together, block_1x2 = stack_2_blocks(upper_block, lower_block, "vertical")
             if fit_together == True:
                 blocks_1x2.append(block_1x2)
                 #_1x2_block_printer(upper_block, lower_block)    
