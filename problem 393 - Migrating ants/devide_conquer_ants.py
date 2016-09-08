@@ -264,23 +264,32 @@ def test_algorithm_manually():
         print("4x4 test passed with", n_4x4)        
         
         
+def test_known_config(x,y,expected=0):
+    grid = build_up_grid(x,y)
+    n = len(grid)
+    if expected == 0:
+        print(x, "x", y, "result", n)            
+        return grid
+    if n != expected:
+        print(x, "x", y, "test failed with", n)
+    else:
+        print(x, "x", y, "test passed with", n)
+    return grid        
+
+        
 def test_algorithm_recursive():
-    def test_known_config(x,y,expected=0):
-        n = len(build_up_grid(x,y))
-        if expected == 0:
-            print(x, "x", y, "result", n)            
-            return
-        if n != expected:
-            print(x, "x", y, "test failed with", n)
-        else:
-            print(x, "x", y, "test passed with", n)
-    
     test_known_config(2,2,2)
     test_known_config(4,2,6)    
-    test_known_config(4,4,8)      
+    test_known_config(4,4,88)      
     test_known_config(6,4)  
     test_known_config(8,4)      
-    test_known_config(8,6)    
+    test_known_config(8,6) # more than 1GB RAM...
+    
+def test_memory():
+#    from pympler import asizeof
+    grid = test_known_config(8,4,88)  
+    
+#    print(asizeof.asizeof(grid))
         
 
 def devide_and_conquer(x,y):        
@@ -324,11 +333,13 @@ def build_up_grid(x=10, y=10, polarization="vertical", border=[0,1,2,3]):
             counter += 1
             return generate_all_1x1_blocks()
             
-        
+            
+            
 
 def solve_problem():
 #    test_algorithm_manually()
-    test_algorithm_recursive()
+#    test_algorithm_recursive()
+    test_memory()
 #    devide_and_conquer(4,4)
     
 #build_up()
