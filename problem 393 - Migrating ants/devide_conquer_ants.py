@@ -265,7 +265,7 @@ def test_algorithm_manually():
         
         
 def test_known_config(x,y,expected=0):
-    grid = build_up_grid(x,y)
+    grid = devide_and_conquer(x,y)
     n = len(grid)
     if expected == 0:
         print(x, "x", y, "result", n)            
@@ -301,6 +301,7 @@ def devide_and_conquer(x,y):
         print("unit cells:", counter, "expected", x*y) 
     grid_combinations = len(grid)
     print("for a", x, "x", y, "grid there are", grid_combinations, "possibilites")
+    return grid
 
     
 # deletes an item from a list, returning not None if item is not in list but list itself
