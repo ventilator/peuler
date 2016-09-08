@@ -37,7 +37,7 @@ import time
 start_time = time.time()  
 block_time = start_time  
 
-dim_x = 4
+dim_x = 2
 dim_y = 2
 max_steps = dim_x*dim_y
 # hm, store directions in an hashable, immutable, ordered object (tuple)
@@ -80,12 +80,12 @@ def plot(X, Y, U, V):
     
     speed = np.sqrt(U**2 + V**2)
     plt.quiver(X, Y, U, V,          # data
-               speed,               # colour the arrows based on this array
-               cmap=cm.viridis,     # colour map
+               speed,               # color the arrows based on this array
+               cmap=cm.viridis,     # color map
                headlength=5,        # length of the arrows
                scale=10.0)
 
-    #plt.colorbar()                  # adds the colour bar    
+    #plt.colorbar()                  # adds the color bar    
     #plt.title('Quive Plot, Dynamic Colours')
     pts = itertools.product(X, Y)
     plt.scatter(*zip(*pts), marker='o', s=30, color='red')
