@@ -229,19 +229,25 @@ def stack_2_blocks(upper_block, lower_block, stack_vertical, border):
 
 # if this block (same flux) was already created by another way, we can just keep track of number, thus reducing greatly complexity
 # e.g. 4x4 grid with 2 borders consists out of 10.000 block, but only 500 unique flux configurations
-def unify_stack(stack):
-    unified_stack = []
-    for block in stack:
-        already_in_stack = False
-        for i, unified_block in enumerate(unified_stack):
-            if block["outflux"] == unified_block["outflux"] and block["influx"] == unified_block["influx"]:
-                unified_stack[i]["uniqueness"] += 1
-                already_in_stack = True
-                break
-        if not already_in_stack:
-            unified_stack.append(copy.deepcopy(block))
-    
-#    if len(unified_stack) != len(stack) and stack[0]['size'] == [2, 4]:
+import collections
+def unify_stack_testing(stack):
+    print("unifying...")
+    counter = collections.Counter(stack)
+    unified_stack = counter.keys()
+    for i,count in enumerate(counter.values()):
+        unified_stack[i]["uniqueness"] += count
+
+#    for block in stack:
+#        already_in_stack = False
+#        for i, unified_block in enumerate(unified_stack):
+#            if block["outflux"] == unified_block["outflux"] and block["influx"] == unified_block["influx"]:
+#                unified_stack[i]["uniqueness"] += block["uniqueness"]
+#                already_in_stack = True
+#                break
+#        if not already_in_stack:
+#            unified_stack.append(copy.deepcopy(block))
+    print("...done")
+#    if len(unified_stack) != len(stack) and stack[0]['size'] == [4, 2]:
 #        print("unique:")
 #        pprint.pprint(unified_stack)
 #        print("not unique:")
@@ -249,11 +255,33 @@ def unify_stack(stack):
 #        sys.exit("i did something")
     return unified_stack        
 
+    
+# if this block (same flux) was already created by another way, we can just keep track of number, thus reducing greatly complexity
+# e.g. 4x4 grid with 2 borders consists out of 10.000 block, but only 500 unique flux configurations
+def unify_stack(stack):
+    print("unifying...")
+    unified_stack = []
+    for block in stack:
+        already_in_stack = False
+        for i, unified_block in enumerate(unified_stack):
+            if block["outflux"] == unified_block["outflux"] and block["influx"] == unified_block["influx"]:
+                unified_stack[i]["uniqueness"] += block["uniqueness"]
+                already_in_stack = True
+                break
+        if not already_in_stack:
+            unified_stack.append(copy.deepcopy(block))
+    print("...done")
+#    if len(unified_stack) != len(stack) and stack[0]['size'] == [4, 2]:
+#        print("unique:")
+#        pprint.pprint(unified_stack)
+#        print("not unique:")
+#        pprint.pprint(stack)
+#        sys.exit("i did something")
+    return unified_stack       
+    
 
-
-        
 demo_generator = False         
-def generate_all_combinations(upper_blocks, lower_blocks, stack_vertical, border):
+def generate_all_combinations_slow(upper_blocks, lower_blocks, stack_vertical, border):
     global demo_generator
     if demo_generator: return []
 #    if upper_blocks == None or lower_blocks == None or len(upper_blocks) == 0 or len(lower_blocks) == 0:
@@ -269,14 +297,49 @@ def generate_all_combinations(upper_blocks, lower_blocks, stack_vertical, border
 #    if len(output_blocks) > 0:            
 #        print("generated", len(output_blocks), output_blocks[0]["size"], "out of", len(upper_blocks), upper_blocks[0]["size"], "and",  len(lower_blocks), lower_blocks[0]["size"] )            
 #    return output_blocks
-    unified_output = unify_stack(output_blocks)
+    unified_output = unify_stack_slow(output_blocks)
     if not count_unique_stacks(unified_output):
         print("not unique enough")
         print(unified_output)
     return unified_output      
 
-    
 
+def append_block(output_blocks, new_block):
+    already_in_stack = False
+    for i, block in enumerate(output_blocks):        
+        if block["outflux"] == new_block["outflux"] and block["influx"] == new_block["influx"]:
+            output_blocks[i]["uniqueness"] += new_block["uniqueness"]
+            already_in_stack = True
+            return output_blocks
+    if not already_in_stack:
+        output_blocks.append(new_block)  
+    return output_blocks        
+
+    
+def generate_all_combinations(upper_blocks, lower_blocks, stack_vertical, border):
+    global demo_generator
+    if demo_generator: return []
+#    if upper_blocks == None or lower_blocks == None or len(upper_blocks) == 0 or len(lower_blocks) == 0:
+#        pprint.pprint(upper_blocks)
+#        pprint.pprint(lower_blocks)
+#        sys.exit("failure, no input_blocks")
+    output_blocks = []
+    for upper_block in upper_blocks:
+        for lower_block in lower_blocks:
+            fit_together, stacked_block = stack_2_blocks(upper_block, lower_block, stack_vertical, border)
+            if fit_together == True:
+                output_blocks = append_block(output_blocks, stacked_block)
+                #output_blocks.append(stacked_block)
+#    if len(output_blocks) > 0:            
+#        print("generated", len(output_blocks), output_blocks[0]["size"], "out of", len(upper_blocks), upper_blocks[0]["size"], "and",  len(lower_blocks), lower_blocks[0]["size"] )            
+    return output_blocks
+    unified_output = unify_stack(output_blocks)
+    if not count_unique_stacks(unified_output):
+        print("not unique enough")
+        print(unified_output)
+    return unified_output     
+
+    
 stacks_logger = [] 
             
 # investigate required buildings blocks    
@@ -311,8 +374,7 @@ def build_up_grid(x=10, y=10, slice_vertical=True, border=set([0,1,2,3])):
             counter += 1
             return generate_all_1x1_blocks()
             
-        
-            
+         
 
 def build_up_closed_4x4():
     seed_1x1_blocks = generate_all_1x1_blocks()
@@ -376,7 +438,7 @@ def test_known_config(x,y,expected=0):
 
     if expected == 0:
         print(x, "x", y, "result", n)            
-        return n
+        return False
     if n != expected:
         print(x, "x", y, "test failed with", n)
         return False
@@ -387,12 +449,11 @@ def test_known_config(x,y,expected=0):
         
 def test_algorithm_recursive():
     if test_known_config(2,2,2):
-        if test_known_config(4,2,6):    
+        if test_known_config(2,4,6):    
             if test_known_config(4,4,88):
-                test_known_config(8,8)  
-#    test_known_config(8,4)      
-#    test_known_config(8,6) # more than 1GB RAM...
-    
+                if test_known_config(8,8,22902801416): # expected value not confirmed by meshgrid - sum runtime = 8.8s, now under 6s
+                    return 0              
+                    test_known_config(10,10)
 
 demo_generator = False
 
@@ -407,7 +468,8 @@ demo_generator = False
         slicer for 10x10 -done
         evaluate caching speed boost for 10x10 -done: 3x: evaluation: not worth the effort right now
         evaluate ram problem for 8x8 --e.g. a 4x4 with two bordes can be created in 10152 but only 523 unique interfaces --> this can be 20x reduced
-        next step: get 8x8 going
+        next step: get 8x8 going --> implemented, success after 8 seconds
+        10x10 still out of reach, 3x5 stacking is a large brocken (2.2M combinations)
 """
 
 # checks if uniquifier works
@@ -439,7 +501,8 @@ def devide_and_conquer(x,y):
     global stacks_logger
     stacks_logger = []
     stack = build_up_grid(x,y) 
-    unique_stack = unify_stack(stack)
+    unique_stack = stack
+#    unique_stack = unify_stack(stack)
     count_unique_stacks(unique_stack) # test if unifier works
     grid_combinations = count_combinations(unique_stack) # calculate end result
     print("for a", x, "x", y, "grid there are", grid_combinations, "possibilites")
