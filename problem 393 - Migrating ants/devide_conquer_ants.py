@@ -61,7 +61,7 @@ from collections import Counter, namedtuple
 Bluck = namedtuple("Bluck", ["influx", "outflux", "size"])
 
 def generate_upright_1x1_seed_block():
-    return Bluck(size=(1,1), outflux=(tuple([1]),tuple([0]),tuple([0]),tuple([0])), influx=(tuple([1]),tuple([0]),tuple([0]),tuple([0]))) # edges are indexed by up, right, bot, left = 0,1,2,3
+    return Bluck(size=(1,1), outflux=(tuple([1]),tuple([0]),tuple([0]),tuple([0])), influx=(tuple([0]),tuple([1]),tuple([0]),tuple([0]))) # edges are indexed by up, right, bot, left = 0,1,2,3
 
     
 def rotate_by_one(flux):
@@ -75,7 +75,7 @@ def generate_all_upright_1x1_blocks():
     for i in range(2):  
         block_rotated = Bluck(rotate_by_one(block.influx), block.outflux, block.size)
         blocks.update([block_rotated])   
-        block = block_rotated
+        block = block_rotated     
     return blocks
 
 
@@ -87,7 +87,7 @@ def generate_all_1x1_blocks():
         for i in range(3):  
             block_rotated = Bluck(rotate_by_one(block.influx), rotate_by_one(block.outflux), block.size)
             all_blocks.update([block_rotated])   
-            block = block_rotated        
+            block = block_rotated  
     return all_blocks
 
        
@@ -114,8 +114,8 @@ def stack_2_blocks(upper_block, lower_block, stack_vertical, border):
         for side in (border-set([touching_sides["lower"]])):
             for direction in ["outflux", "influx"]: 
                 if 1 in getattr(lower_block, direction)[side]:
-                    return False, None                   
-            
+                    return False, None    
+         
         # generate new block
         block = dict()
         # edges are indexed by up, right, bot, left = 0,1,2,3 (inside an edge numbering follows clockwise)
@@ -131,7 +131,10 @@ def stack_2_blocks(upper_block, lower_block, stack_vertical, border):
             # edges are indexed by up, right, bot, left = 0,1,2,3 (inside an edge numbering follows clockwise)
             # flow on touching edges is consumed/not reported anymore/does not matter
             for direction in ["outflux", "influx"]:
-                block[direction] = (getattr(upper_block, direction)[0], getattr(upper_block, direction)[1]+getattr(lower_block, direction)[1], getattr(lower_block, direction)[2], getattr(lower_block, direction)[3]+getattr(upper_block, direction)[3])  
+                block[direction] = (getattr(upper_block, direction)[0],\
+                                    getattr(upper_block, direction)[1]+getattr(lower_block, direction)[1],\
+                                    getattr(lower_block, direction)[2],\
+                                    getattr(lower_block, direction)[3]+getattr(upper_block, direction)[3])  
         else:
             block["size"] = (upper_block.size[0]+lower_block.size[0], upper_block.size[1])
             if upper_block.size[1] != lower_block.size[1]:
@@ -139,18 +142,21 @@ def stack_2_blocks(upper_block, lower_block, stack_vertical, border):
                 return False, None
             for direction in ["outflux", "influx"]:
                 block[direction] = (getattr(upper_block, direction)[0]+getattr(lower_block, direction)[0], getattr(lower_block, direction)[1], getattr(lower_block, direction)[2]+getattr(upper_block, direction)[2], getattr(upper_block, direction)[3])            
-          
         return True, Bluck(**block)
     else:
         return False, None  
 
+        
 def generate_all_combinations(upper_blocks, lower_blocks, stack_vertical, border):
     output_blocks = Counter()
-    for upper_block in upper_blocks:
-        for lower_block in lower_blocks:
+    for upper_block,u in upper_blocks.items():
+        for lower_block,l in lower_blocks.items():
             fit_together, stacked_block = stack_2_blocks(upper_block, lower_block, stack_vertical, border)
             if fit_together == True:
-                output_blocks.update([stacked_block])
+                if u*l > 10000: print("stacking", u*l)
+                for i in range(u*l): # to preserve count. performance issue (400k in <100ms), (22259524 > 10 sek)
+                    output_blocks.update([stacked_block])
+                if u*l > 10000: print("done....")    
     return output_blocks  
 
     
@@ -179,8 +185,6 @@ def build_up_grid(x=10, y=10, border=set([0,1,2,3])):
             print("stackings:",len(stacks_logger), "zZ", x, "x", y, "out of", ul, "x", ll, "combinations:", ll*ul)    
             grid = generate_all_combinations(upper_block, lower_block, slice_vertical, border)    
             print("sucessfull stackings:", round(len(grid)/(ll*ul),3), "grids:", len(grid))
-#            if x==4 and y==4:
-#                count_unique_stacks(grid)
             return grid
         else:
             global counter
@@ -242,7 +246,6 @@ def devide_and_conquer(x,y):
     global stacks_logger
     stacks_logger = []
     blocks = build_up_grid(x,y)
-    pprint(blocks)
     grid_combinations = count_combinations(blocks) # calculate end result
     print("for a", x, "x", y, "grid there are", grid_combinations, "possibilites")
     
