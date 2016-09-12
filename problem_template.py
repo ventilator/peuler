@@ -1,7 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Feb 17 21:02:08 2014
-@author: ventilator """
+@author: ventilator 
+
+
+best practice:
+    hashable, immutable datatypes are your friend. no need for deepcopy etc, faster
+
+
+"""
 
 import time
 start_time = time.time()        
