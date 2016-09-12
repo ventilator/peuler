@@ -343,9 +343,9 @@ def generate_all_combinations(upper_blocks, lower_blocks, stack_vertical, border
 stacks_logger = [] 
             
 # investigate required buildings blocks    
-def build_up_grid(x=10, y=10, slice_vertical=True, border=set([0,1,2,3])):
+def build_up_grid(x=10, y=10, border=set([0,1,2,3])):
     global stacks_logger
-    stacks_logger.append([x,y,slice_vertical,border])
+    stacks_logger.append([x,y,border])
     #print("stackings so far:",len(stacks), "recently", [x,y,slice_vertical,border])
     
     slice_vertical = (x >= y) # slice always through longer side (+ this is a fix for irregular sizes e.g. 10x10)
@@ -355,11 +355,11 @@ def build_up_grid(x=10, y=10, slice_vertical=True, border=set([0,1,2,3])):
     else:
         if not (x==1 and y==1):
             if slice_vertical==True:            
-                upper_block = build_up_grid(x//2, y, False, border-set([2]))
-                lower_block = build_up_grid(x-x//2, y, False, border-set([0]))                
+                upper_block = build_up_grid(x//2, y, border-set([2]))
+                lower_block = build_up_grid(x-x//2, y, border-set([0]))                
             else:
-                upper_block = build_up_grid(x, y//2, True, border-set([1]))
-                lower_block = build_up_grid(x, y-y//2, True, border-set([3]))  
+                upper_block = build_up_grid(x, y//2, border-set([1]))
+                lower_block = build_up_grid(x, y-y//2, border-set([3]))  
             
             ul = len(upper_block) 
             ll = len(lower_block)
@@ -373,66 +373,8 @@ def build_up_grid(x=10, y=10, slice_vertical=True, border=set([0,1,2,3])):
             global counter
             counter += 1
             return generate_all_1x1_blocks()
+
             
-         
-
-def build_up_closed_4x4():
-    seed_1x1_blocks = generate_all_1x1_blocks()
-    blocks_1x2 = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, True, [])  
-    blocks_2x2_dl = generate_all_combinations(blocks_1x2, blocks_1x2, False, [2,3]) 
-    blocks_2x2_dr = generate_all_combinations(blocks_1x2, blocks_1x2, False, [1,2]) 
-    blocks_2x2_ul = generate_all_combinations(blocks_1x2, blocks_1x2, False, [0,3]) 
-    blocks_2x2_ur = generate_all_combinations(blocks_1x2, blocks_1x2, False, [0,1])
-
-    blocks_2x4_l = generate_all_combinations(blocks_2x2_ul, blocks_2x2_dl, True, [0,2,3])   
-    blocks_2x4_r = generate_all_combinations(blocks_2x2_ur, blocks_2x2_dr, True, [0,1,2]) 
-
-    blocks_4x4 = generate_all_combinations(blocks_2x4_l, blocks_2x4_r, False, [0,1,2,3])       
-
-    return len(blocks_4x4)
-    
-    
-def build_up_closed_2x4():
-    seed_1x1_blocks = generate_all_1x1_blocks()
-    blocks_1x2 = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, True, [])  
-    blocks_2x2_u = generate_all_combinations(blocks_1x2, blocks_1x2, False, [0,1,3]) 
-    blocks_2x2_l = generate_all_combinations(blocks_1x2, blocks_1x2, False, [1,2,3])
-    blocks_2x4 = generate_all_combinations(blocks_2x2_u, blocks_2x2_l, True, [0,1,2,3]) 
-    return len(blocks_2x4)    
-    
-    
-def build_up_closed_2x2():
-    seed_1x1_blocks = generate_all_1x1_blocks()
-    blocks_1x2_l = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, True, [0,2,3]) 
-    blocks_1x2_r = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, True, [0,1,2])       
-    blocks_2x2 = generate_all_combinations(blocks_1x2_l, blocks_1x2_r, False, [0,1,2,3]) 
-    return len(blocks_2x2)    
- 
-    
-def test_algorithm_manually():
-    seed_1x1_blocks = generate_all_1x1_blocks()
-    if len(seed_1x1_blocks) != 12:
-        print("Warning:", len(seed_1x1_blocks), "1x1 have been generated. Should be 12")   
-    
-    n_2x2 = build_up_closed_2x2()
-    if n_2x2 != 2:
-        print("2x2 test failed with", n_2x2)
-    else:
-        print("2x2 test passed with", n_2x2)
-        
-    n_2x4 = build_up_closed_2x4()
-    if n_2x4 != 6:
-        print("2x4 test failed with", n_2x4)
-    else:
-        print("2x4 test passed with", n_2x4)            
-        
-    n_4x4 = build_up_closed_4x4()
-    if n_4x4 != 88:
-        print("4x4 test failed with", n_4x4)
-    else:
-        print("4x4 test passed with", n_4x4)        
-        
-        
 def test_known_config(x,y,expected=0):
     n = devide_and_conquer(x,y)
 
@@ -529,3 +471,62 @@ solve_problem()
 
 print("runtime: \x1b[1;31m%.2fs\x1b[0m" % (time.time() - start_time))
 #print("memory: \x1b[1;31m%.2fM\x1b[0m" % (asizeof.asizeof(grid)/1000/1000))
+
+
+
+# ------------------old testing funcitons----------------------------------------------
+def build_up_closed_4x4():
+    seed_1x1_blocks = generate_all_1x1_blocks()
+    blocks_1x2 = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, True, [])  
+    blocks_2x2_dl = generate_all_combinations(blocks_1x2, blocks_1x2, False, [2,3]) 
+    blocks_2x2_dr = generate_all_combinations(blocks_1x2, blocks_1x2, False, [1,2]) 
+    blocks_2x2_ul = generate_all_combinations(blocks_1x2, blocks_1x2, False, [0,3]) 
+    blocks_2x2_ur = generate_all_combinations(blocks_1x2, blocks_1x2, False, [0,1])
+
+    blocks_2x4_l = generate_all_combinations(blocks_2x2_ul, blocks_2x2_dl, True, [0,2,3])   
+    blocks_2x4_r = generate_all_combinations(blocks_2x2_ur, blocks_2x2_dr, True, [0,1,2]) 
+
+    blocks_4x4 = generate_all_combinations(blocks_2x4_l, blocks_2x4_r, False, [0,1,2,3])       
+
+    return len(blocks_4x4)
+    
+    
+def build_up_closed_2x4():
+    seed_1x1_blocks = generate_all_1x1_blocks()
+    blocks_1x2 = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, True, [])  
+    blocks_2x2_u = generate_all_combinations(blocks_1x2, blocks_1x2, False, [0,1,3]) 
+    blocks_2x2_l = generate_all_combinations(blocks_1x2, blocks_1x2, False, [1,2,3])
+    blocks_2x4 = generate_all_combinations(blocks_2x2_u, blocks_2x2_l, True, [0,1,2,3]) 
+    return len(blocks_2x4)    
+    
+    
+def build_up_closed_2x2():
+    seed_1x1_blocks = generate_all_1x1_blocks()
+    blocks_1x2_l = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, True, [0,2,3]) 
+    blocks_1x2_r = generate_all_combinations(seed_1x1_blocks, seed_1x1_blocks, True, [0,1,2])       
+    blocks_2x2 = generate_all_combinations(blocks_1x2_l, blocks_1x2_r, False, [0,1,2,3]) 
+    return len(blocks_2x2)    
+ 
+    
+def test_algorithm_manually():
+    seed_1x1_blocks = generate_all_1x1_blocks()
+    if len(seed_1x1_blocks) != 12:
+        print("Warning:", len(seed_1x1_blocks), "1x1 have been generated. Should be 12")   
+    
+    n_2x2 = build_up_closed_2x2()
+    if n_2x2 != 2:
+        print("2x2 test failed with", n_2x2)
+    else:
+        print("2x2 test passed with", n_2x2)
+        
+    n_2x4 = build_up_closed_2x4()
+    if n_2x4 != 6:
+        print("2x4 test failed with", n_2x4)
+    else:
+        print("2x4 test passed with", n_2x4)            
+        
+    n_4x4 = build_up_closed_4x4()
+    if n_4x4 != 88:
+        print("4x4 test failed with", n_4x4)
+    else:
+        print("4x4 test passed with", n_4x4)   
