@@ -13,7 +13,7 @@ best practice:
 
 def solve_problem():
            
-    return 0
+    pass
     
 if __name__ == "__main__":    
     import time
